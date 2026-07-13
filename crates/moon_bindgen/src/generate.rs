@@ -270,7 +270,7 @@ fn moon_type(ty: &Type, type_rename: fn(String) -> String) -> Option<String> {
                     Some(format!("Ref[{}]", primitive_moon_type(p)?))
                 }
                 Type::Path(p) => Some(renamed_type_ident(p.rsplit("::").next()?, type_rename)),
-                _ => None,
+                _ => moon_type(inner, type_rename).map(|ty| format!("Ref[{ty}]")),
             }
         }
         Type::Array { inner, .. } => {
@@ -318,7 +318,7 @@ fn is_direct_ffi_type(ty: &Type, model: &Model) -> bool {
                 .get(name)
                 .is_some_and(|alias| is_direct_ffi_type(alias, model))
         }
-        Type::Pointer { inner, .. } => matches!(inner.as_ref(), Type::Path(_)),
+        Type::Pointer { inner, .. } => is_pointer_pointee(inner, model),
         Type::Array { .. } => false,
         Type::FunctionPointer {
             params,
@@ -333,6 +333,24 @@ fn is_direct_ffi_type(ty: &Type, model: &Model) -> bool {
         Type::Unsupported => false,
     }
 }
+
+fn is_pointer_pointee(ty: &Type, model: &Model) -> bool {
+    match ty {
+        Type::Path(_) => true,
+        Type::Pointer { inner, .. } => is_pointer_pointee(inner, model),
+        Type::FunctionPointer {
+            params,
+            result,
+            variadic,
+            ..
+        } => {
+            !variadic
+                && params.iter().all(|param| is_direct_ffi_type(param, model))
+                && is_direct_ffi_type(result, model)
+        }
+        Type::Unit | Type::Array { .. } | Type::Unsupported => false,
+    }
+}
 fn contains_nullable_callback(t: &Type) -> bool {
     match t {
         Type::FunctionPointer { nullable, .. } => *nullable,
@@ -343,18 +361,30 @@ fn contains_nullable_callback(t: &Type) -> bool {
     }
 }
 fn collect_opaque(t: &Type, model: &Model, out: &mut BTreeSet<String>) {
-    if let Type::Pointer { inner, .. } = t
-        && let Type::Path(p) = inner.as_ref()
-    {
-        let n = p.rsplit("::").next().unwrap();
-        if n == "c_void" {
-            out.insert("RawPtr".into());
-        } else if !is_primitive(n)
-            && !model.structs.contains_key(n)
-            && !model.aliases.contains_key(n)
-        {
-            out.insert(n.into());
+    match t {
+        Type::Pointer { inner, .. } => {
+            if let Type::Path(p) = inner.as_ref() {
+                let n = p.rsplit("::").next().unwrap();
+                if n == "c_void" {
+                    out.insert("RawPtr".into());
+                } else if !is_primitive(n)
+                    && !model.structs.contains_key(n)
+                    && !model.aliases.contains_key(n)
+                {
+                    out.insert(n.into());
+                }
+            } else {
+                collect_opaque(inner, model, out);
+            }
         }
+        Type::Array { inner, .. } => collect_opaque(inner, model, out),
+        Type::FunctionPointer { params, result, .. } => {
+            for param in params {
+                collect_opaque(param, model, out);
+            }
+            collect_opaque(result, model, out);
+        }
+        _ => {}
     }
 }
 fn contains_pointer_to_value_struct(t: &Type, value_structs: &BTreeSet<String>) -> bool {
@@ -786,6 +816,9 @@ unsafe extern "C" {
 unsafe extern "C" {
   pub fn by_value(value: Value) -> Value;
   pub fn double_pointer(value: *mut *mut i32);
+  pub fn triple_pointer(value: *mut *mut *mut Context);
+  pub fn raw_double_pointer(value: *mut *mut ::std::ffi::c_void);
+  pub fn byte_double_pointer(value: *mut *mut u8);
   pub fn nullable(value: Option<*mut Value>);
   pub fn supported(value: *mut Value);
 }
@@ -811,10 +844,26 @@ unsafe extern "C" {
         assert!(b.moonbit_source().contains("fn by_value"));
         assert!(b.c_stub_source().contains("moon_bindgen_by_value"));
         assert!(b.c_stub_source().contains("moonbit_make_bytes"));
-        assert!(!b.moonbit_source().contains("fn double_pointer"));
+        assert!(
+            b.moonbit_source()
+                .contains("fn double_pointer(value : Ref[Ref[Int]])")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn triple_pointer(value : Ref[Ref[Context]])")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn raw_double_pointer(value : Ref[RawPtr])")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn byte_double_pointer(value : Ref[Bytes])")
+        );
+        assert!(b.moonbit_source().contains("#external\ntype RawPtr"));
         assert!(!b.moonbit_source().contains("fn nullable"));
         assert!(!b.moonbit_source().contains("fn supported"));
-        assert_eq!(b.diagnostics().len(), 3);
+        assert_eq!(b.diagnostics().len(), 2);
     }
 
     #[test]
@@ -823,7 +872,11 @@ unsafe extern "C" {
             r#"
 #[repr(C)] pub struct Inner { value: i32, bytes: [u8; 4] }
 #[repr(C)] pub struct Outer { inner: Inner, enabled: bool }
-unsafe extern "C" { pub fn round_trip(value: Outer) -> Outer; }
+#[repr(C)] pub struct PointerHolder { value: *mut *mut i32 }
+unsafe extern "C" {
+  pub fn round_trip(value: Outer) -> Outer;
+  pub fn consume_pointer_holder(value: PointerHolder);
+}
 "#,
         )
         .unwrap();
@@ -843,6 +896,8 @@ unsafe extern "C" { pub fn round_trip(value: Outer) -> Outer; }
             default_constant_rename,
         );
         assert!(b.moonbit_source().contains("pub(all) struct Inner"));
+        assert!(b.moonbit_source().contains("value : Ref[Ref[Int]]"));
+        assert!(b.c_stub_source().contains("int32_t * * value_value"));
         assert!(b.moonbit_source().contains("pub(all) struct Outer"));
         assert!(
             b.moonbit_source()
