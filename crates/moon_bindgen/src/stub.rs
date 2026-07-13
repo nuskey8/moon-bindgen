@@ -562,6 +562,9 @@ fn resolve_alias<'a>(ty: &'a Type, model: &'a Model) -> &'a Type {
 }
 
 fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<String> {
+    if let Some(name) = opaque_pointer_carrier_name(ty, model, rename) {
+        return Some(name);
+    }
     match resolve_alias(ty, model) {
         Type::Unit => Some("Unit".into()),
         Type::Path(path) => Some(match last(path) {
@@ -592,6 +595,25 @@ fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<S
         }
         _ => None,
     }
+}
+
+fn opaque_pointer_carrier_name(
+    ty: &Type,
+    model: &Model,
+    rename: fn(String) -> String,
+) -> Option<String> {
+    let mut current = resolve_alias(ty, model);
+    let mut depth = 0;
+    while let Type::Pointer { inner, .. } = current {
+        depth += 1;
+        current = resolve_alias(inner, model);
+    }
+    let Type::Path(path) = current else {
+        return None;
+    };
+    let base = last(path);
+    (depth >= 2 && primitive_c_type(base).is_none() && base != "c_void")
+        .then(|| format!("{}{}", type_name(base, rename), "Ptr".repeat(depth - 1)))
 }
 
 fn c_type(ty: &Type, model: &Model) -> Option<String> {

@@ -208,11 +208,15 @@ pub fn lz4_version_string() -> Bytes
 
 pub fn my_add(Int, Int) -> Int
 
-pub fn test_context_create(@ref.Ref[TestContext]) -> Unit
+pub fn test_context_create(TestContextPtr) -> Unit
 
 pub fn test_context_null() -> TestContext
 
-pub fn test_context_pointer_pointer(@ref.Ref[@ref.Ref[TestContext]]) -> Unit
+pub fn test_context_pointer_pointer(TestContextPtrPtr) -> Unit
+
+pub fn test_context_ptr() -> TestContextPtr
+
+pub fn test_context_ptr_ptr() -> TestContextPtrPtr
 
 pub fn test_context_value(TestContext) -> Int
 
@@ -248,6 +252,14 @@ pub type RawPtr
 
 #external
 pub type TestContext
+
+#external
+pub type TestContextPtr
+pub fn TestContextPtr::deref(Self) -> TestContext
+
+#external
+pub type TestContextPtrPtr
+pub fn TestContextPtrPtr::deref(Self) -> TestContextPtr
 
 pub(all) struct TestLine {
   start : TestPoint

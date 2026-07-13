@@ -37,16 +37,16 @@ test "pointer field in an input struct" {
 
 ///|
 test "double pointer to an external context" {
-  let context = Ref(test_context_null())
+  let context = test_context_ptr()
   test_context_create(context)
-  assert_eq(test_context_value(context.val), 1234)
+  assert_eq(test_context_value(context.deref()), 1234)
 }
 
 ///|
 test "triple pointer updates the deepest external context" {
-  let context = Ref(Ref(test_context_null()))
+  let context = test_context_ptr_ptr()
   test_context_pointer_pointer(context)
-  assert_eq(test_context_value(context.val.val), 1234)
+  assert_eq(test_context_value(context.deref().deref()), 1234)
 }
 
 ///|

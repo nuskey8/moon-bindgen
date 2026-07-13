@@ -28,6 +28,8 @@ unsafe extern "C" {
     pub fn test_line_translate(line: TestLine, dx: i32, dy: i32) -> TestLine;
     pub fn test_slice_sum(slice: TestSlice) -> u32;
     pub fn test_context_null() -> *mut TestContext;
+    pub fn test_context_ptr() -> *mut *mut TestContext;
+    pub fn test_context_ptr_ptr() -> *mut *mut *mut TestContext;
     pub fn test_context_create(out: *mut *mut TestContext);
     pub fn test_context_value(context: *const TestContext) -> i32;
     pub fn test_context_pointer_pointer(out: *mut *mut *mut TestContext);

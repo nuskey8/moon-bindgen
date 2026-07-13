@@ -21,6 +21,8 @@ typedef struct TestContext {
 } TestContext;
 
 static TestContext test_context = {1234};
+static TestContext *test_context_slot;
+static TestContext **test_context_slot_pointer = &test_context_slot;
 static int32_t test_integer = 42;
 
 TestPoint test_point_translate(TestPoint point, int32_t dx, int32_t dy) {
@@ -49,6 +51,14 @@ uint32_t test_slice_sum(TestSlice slice) {
 
 TestContext *test_context_null(void) {
   return 0;
+}
+
+TestContext **test_context_ptr(void) {
+  return &test_context_slot;
+}
+
+TestContext ***test_context_ptr_ptr(void) {
+  return &test_context_slot_pointer;
 }
 
 void test_context_create(TestContext **out) {
