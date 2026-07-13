@@ -133,3 +133,13 @@ void *moon_bindgen_test_context_ptr_ptr_deref(void *self) {
   return *(void **)self;
 }
 
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_test_context_null(void) {
+  return (void *)0;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_test_context_is_null(void *value) {
+  return value == (void *)0;
+}
+

@@ -1,5 +1,5 @@
 use crate::model::{Bindings, Diagnostic, DiagnosticLevel, Model, Type};
-use crate::{Ownership, Visibility};
+use crate::{Nullability, NullabilityPosition, Ownership, Visibility};
 use heck::ToSnakeCase;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -13,6 +13,7 @@ pub(crate) fn render(
     type_filter: fn(String) -> bool,
     constant_filter: fn(String) -> bool,
     ownership_resolver: &dyn Fn(&str, &str) -> Ownership,
+    nullability_resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
     constant_rename: fn(String) -> String,
@@ -75,6 +76,32 @@ pub(crate) fn render(
             collect_opaque(&field.ty, model, &mut opaque);
         }
     }
+    let mut nullable_externals = BTreeSet::new();
+    for f in model.functions.values() {
+        if !function_filter(f.rust_name.clone()) {
+            continue;
+        }
+        for (name, ty) in &f.params {
+            if effective_nullability(
+                nullability_resolver,
+                &f.rust_name,
+                NullabilityPosition::Parameter(name.clone()),
+            ) == Nullability::Nullable
+                && let Some(ty) = external_pointer_type(ty, type_rename)
+            {
+                nullable_externals.insert(ty);
+            }
+        }
+        if effective_nullability(
+            nullability_resolver,
+            &f.rust_name,
+            NullabilityPosition::Return,
+        ) == Nullability::Nullable
+            && let Some(ty) = external_pointer_type(&f.result, type_rename)
+        {
+            nullable_externals.insert(ty);
+        }
+    }
     let mut pointer_carriers = BTreeMap::new();
     for f in model.functions.values() {
         if !function_filter(f.rust_name.clone()) {
@@ -115,11 +142,17 @@ pub(crate) fn render(
         );
     }
     emit_pointer_carriers(&mut out, &mut stub.c_source, &pointer_carriers, visibility);
+    emit_nullable_external_helpers(
+        &mut out,
+        &mut stub.c_source,
+        &nullable_externals,
+        visibility,
+    );
     for (name, alias) in &model.aliases {
         if !type_filter(name.clone()) {
             continue;
         }
-        if let Some(ty) = moon_type(alias, type_rename) {
+        if let Some(ty) = moon_alias_type(name, alias, model, type_filter, type_rename) {
             out.push_str(&format!(
                 "///|\n{}type {} = {}\n\n",
                 visibility.prefix(),
@@ -174,6 +207,18 @@ pub(crate) fn render(
                 &f.rust_name,
                 "variadic functions cannot be represented in MoonBit FFI",
             ));
+            continue;
+        }
+        if function_needs_nullable_wrapper(f, nullability_resolver, type_rename) {
+            emit_nullable_function(
+                &mut out,
+                f,
+                visibility,
+                ownership_resolver,
+                nullability_resolver,
+                function_rename,
+                type_rename,
+            );
             continue;
         }
         let params: Option<Vec<_>> = f
@@ -243,6 +288,241 @@ pub(crate) fn render(
     out.push('\n');
     Bindings::new(out, stub.c_source, diagnostics)
 }
+
+fn moon_alias_type(
+    name: &str,
+    alias: &Type,
+    model: &Model,
+    type_filter: fn(String) -> bool,
+    type_rename: fn(String) -> String,
+) -> Option<String> {
+    let emitted_name = renamed_type_ident(name, type_rename);
+    let mut current = alias;
+    let mut seen = BTreeSet::new();
+    loop {
+        let ty = moon_type(current, type_rename)?;
+        let Type::Path(path) = current else {
+            return (ty != emitted_name).then_some(ty);
+        };
+        let target = path.rsplit("::").next()?;
+        let should_resolve = ty == emitted_name
+            || (!type_filter(target.to_owned()) && model.aliases.contains_key(target));
+        if !should_resolve {
+            return Some(ty);
+        }
+        if !seen.insert(target) {
+            return None;
+        }
+        current = model.aliases.get(target)?;
+    }
+}
+
+fn effective_nullability(
+    resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
+    function: &str,
+    position: NullabilityPosition,
+) -> Nullability {
+    match resolver(function, position.clone()) {
+        Nullability::Unspecified => match position {
+            NullabilityPosition::Return => Nullability::Nullable,
+            NullabilityPosition::Parameter(_) => Nullability::NonNull,
+        },
+        value => value,
+    }
+}
+
+fn external_pointer_type(ty: &Type, type_rename: fn(String) -> String) -> Option<String> {
+    let mut current = ty;
+    let mut depth = 0;
+    while let Type::Pointer { inner, .. } = current {
+        depth += 1;
+        current = inner;
+    }
+    let Type::Path(path) = current else {
+        return None;
+    };
+    let base = path.rsplit("::").next()?;
+    if depth == 0 || (is_primitive(base) && base != "c_void") {
+        return None;
+    }
+    moon_type(ty, type_rename)
+}
+
+fn function_needs_nullable_wrapper(
+    function: &crate::model::Function,
+    resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
+    type_rename: fn(String) -> String,
+) -> bool {
+    function.params.iter().any(|(name, ty)| {
+        external_pointer_type(ty, type_rename).is_some()
+            && effective_nullability(
+                resolver,
+                &function.rust_name,
+                NullabilityPosition::Parameter(name.clone()),
+            ) == Nullability::Nullable
+    }) || (external_pointer_type(&function.result, type_rename).is_some()
+        && effective_nullability(resolver, &function.rust_name, NullabilityPosition::Return)
+            == Nullability::Nullable)
+}
+
+fn ensure_c_stub_prelude(c: &mut String) {
+    if c.is_empty() {
+        c.push_str("// Generated by moon-bindgen. Do not edit.\n#include <moonbit.h>\n\n");
+    } else if !c.ends_with('\n') {
+        c.push('\n');
+    }
+}
+
+fn emit_nullable_external_helpers(
+    moon: &mut String,
+    c: &mut String,
+    types: &BTreeSet<String>,
+    visibility: Visibility,
+) {
+    if types.is_empty() {
+        return;
+    }
+    ensure_c_stub_prelude(c);
+    for ty in types {
+        let prefix = format!("moon_bindgen_{}", ty.to_snake_case());
+        let null_symbol = format!("{prefix}_null");
+        let is_null_symbol = format!("{prefix}_is_null");
+        moon.push_str(&format!(
+            "///|\nextern \"c\" fn {null_symbol}() -> {ty} = \"{null_symbol}\"\n\n"
+        ));
+        moon.push_str(&format!(
+            "///|\n#borrow(value)\nextern \"c\" fn {is_null_symbol}(value : {ty}) -> Bool = \"{is_null_symbol}\"\n\n"
+        ));
+        moon.push_str(&format!(
+            "///|\n{}fn {ty}::null() -> {ty} {{\n  {null_symbol}()\n}}\n\n",
+            visibility.prefix()
+        ));
+        moon.push_str(&format!(
+            "///|\n{}fn {ty}::is_null(self : {ty}) -> Bool {{\n  {is_null_symbol}(self)\n}}\n\n",
+            visibility.prefix()
+        ));
+        c.push_str(&format!(
+            "MOONBIT_FFI_EXPORT\nvoid *{null_symbol}(void) {{\n  return (void *)0;\n}}\n\n"
+        ));
+        c.push_str(&format!(
+            "MOONBIT_FFI_EXPORT\nint32_t {is_null_symbol}(void *value) {{\n  return value == (void *)0;\n}}\n\n"
+        ));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_nullable_function(
+    out: &mut String,
+    function: &crate::model::Function,
+    visibility: Visibility,
+    ownership_resolver: &dyn Fn(&str, &str) -> Ownership,
+    nullability_resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
+    function_rename: fn(String) -> String,
+    type_rename: fn(String) -> String,
+) {
+    let params = function
+        .params
+        .iter()
+        .map(|(name, ty)| {
+            let raw_ty = moon_type(ty, type_rename).expect("validated direct FFI type");
+            let nullable = external_pointer_type(ty, type_rename).is_some()
+                && effective_nullability(
+                    nullability_resolver,
+                    &function.rust_name,
+                    NullabilityPosition::Parameter(name.clone()),
+                ) == Nullability::Nullable;
+            (name, ty, raw_ty, nullable)
+        })
+        .collect::<Vec<_>>();
+    let raw_result = moon_type(&function.result, type_rename).expect("validated direct FFI type");
+    let nullable_result = external_pointer_type(&function.result, type_rename).is_some()
+        && effective_nullability(
+            nullability_resolver,
+            &function.rust_name,
+            NullabilityPosition::Return,
+        ) == Nullability::Nullable;
+    let raw_name = format!(
+        "moon_bindgen_{}_raw",
+        renamed_value_ident(&function.rust_name, function_rename)
+    );
+
+    let ownerships = params
+        .iter()
+        .filter(|(_, ty, _, _)| needs_ownership(ty))
+        .map(|(name, _, _, _)| {
+            (
+                safe_value_ident(name),
+                ownership_resolver(&function.rust_name, name),
+            )
+        })
+        .collect::<Vec<_>>();
+    for (annotation, ownership) in [("borrow", Ownership::Borrowed), ("owned", Ownership::Owned)] {
+        let names = ownerships
+            .iter()
+            .filter(|(_, value)| *value == ownership)
+            .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>();
+        if !names.is_empty() {
+            out.push_str(&format!("#{annotation}({})\n", names.join(", ")));
+        }
+    }
+    out.push_str(&format!("extern \"c\" fn {raw_name}("));
+    for (index, (name, _, raw_ty, _)) in params.iter().enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!("{} : {raw_ty}", safe_value_ident(name)));
+    }
+    out.push(')');
+    if raw_result != "Unit" {
+        out.push_str(&format!(" -> {raw_result}"));
+    }
+    out.push_str(&format!(" = \"{}\"\n\n", function.symbol));
+
+    let public_name = renamed_value_ident(&function.rust_name, function_rename);
+    out.push_str(&format!("///|\n{}fn {public_name}(", visibility.prefix()));
+    for (index, (name, _, raw_ty, nullable)) in params.iter().enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        let suffix = if *nullable { "?" } else { "" };
+        out.push_str(&format!("{} : {raw_ty}{suffix}", safe_value_ident(name)));
+    }
+    out.push(')');
+    if raw_result != "Unit" {
+        let suffix = if nullable_result { "?" } else { "" };
+        out.push_str(&format!(" -> {raw_result}{suffix}"));
+    }
+    out.push_str(" {\n");
+    for (name, _, raw_ty, nullable) in &params {
+        if *nullable {
+            let name = safe_value_ident(name);
+            out.push_str(&format!(
+                "  let {name}_raw = match {name} {{\n    Some(value) => value\n    None => {raw_ty}::null()\n  }}\n"
+            ));
+        }
+    }
+    let args = params
+        .iter()
+        .map(|(name, _, _, nullable)| {
+            let name = safe_value_ident(name);
+            if *nullable {
+                format!("{name}_raw")
+            } else {
+                name
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    if nullable_result {
+        out.push_str(&format!("  let result = {raw_name}({args})\n"));
+        out.push_str("  if result.is_null() {\n    None\n  } else {\n    Some(result)\n  }\n");
+    } else {
+        out.push_str(&format!("  {raw_name}({args})\n"));
+    }
+    out.push_str("}\n\n");
+}
+
 fn emit_external_type(
     out: &mut String,
     name: &str,
@@ -633,6 +913,9 @@ mod tests {
     fn default_constant_rename(name: String) -> String {
         name.to_shouty_snake_case()
     }
+    fn default_nullability(_: &str, _: NullabilityPosition) -> Nullability {
+        Nullability::Unspecified
+    }
     #[test]
     fn generates_ffi() {
         let f = syn::parse_file(
@@ -655,6 +938,7 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -695,6 +979,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -737,6 +1022,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -768,6 +1054,7 @@ unsafe extern "C" { pub fn library_count(context: *mut Context) -> Count; }
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -804,6 +1091,7 @@ unsafe extern "C" { pub fn library_count(context: *mut Context) -> Count; }
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -837,6 +1125,7 @@ pub const DROP_CONST: u32 = 2;
             |name| name.starts_with("Keep"),
             |name| name.starts_with("KEEP"),
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -874,6 +1163,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -898,6 +1188,62 @@ unsafe extern "C" {
     }
 
     #[test]
+    fn resolves_aliases_that_collapse_to_the_same_moonbit_name() {
+        let f = syn::parse_file(
+            r#"
+pub type __int16_t = ::std::os::raw::c_short;
+pub type __int8_t = i8;
+pub type __int32_t = i32;
+pub type __int64_t = i64;
+pub type int_least8_t = __int8_t;
+pub type int_least16_t = __int16_t;
+pub type int_least32_t = __int32_t;
+pub type int_least64_t = __int64_t;
+pub type __uint8_t = u8;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __uint32_t = u32;
+pub type __uint64_t = ::std::os::raw::c_ulong;
+pub type uint_least8_t = __uint8_t;
+pub type uint_least16_t = __uint16_t;
+pub type uint_least32_t = __uint32_t;
+pub type uint_least64_t = __uint64_t;
+pub type uintmax_t = __uint64_t;
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |name| !name.starts_with('_'),
+            |_| true,
+            &|_, _| Ownership::Borrowed,
+            &default_nullability,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+        assert!(b.moonbit_source().contains("pub type IntLeast16T = Int"));
+        assert!(b.moonbit_source().contains("pub type IntLeast8T = Byte"));
+        assert!(b.moonbit_source().contains("pub type IntLeast32T = Int"));
+        assert!(b.moonbit_source().contains("pub type IntLeast64T = Int64"));
+        assert!(b.moonbit_source().contains("pub type UintLeast8T = Byte"));
+        assert!(b.moonbit_source().contains("pub type UintLeast16T = Int"));
+        assert!(b.moonbit_source().contains("pub type UintLeast32T = UInt"));
+        assert!(
+            b.moonbit_source()
+                .contains("pub type UintLeast64T = UInt64")
+        );
+        assert!(b.moonbit_source().contains("pub type UintmaxT = UInt64"));
+        assert!(!b.moonbit_source().contains("IntLeast16T = IntLeast16T"));
+        assert!(!b.moonbit_source().contains("UintmaxT = UintmaxT"));
+    }
+
+    #[test]
     fn resolves_parameter_ownership_with_original_names() {
         let f = syn::parse_file(
             r#"unsafe extern "C" {
@@ -919,6 +1265,7 @@ unsafe extern "C" {
                 ("register_data", "kept") => Ownership::Owned,
                 _ => Ownership::Borrowed,
             },
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -957,6 +1304,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -1029,6 +1377,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             default_function_rename,
             default_type_rename,
             default_constant_rename,
@@ -1049,6 +1398,51 @@ unsafe extern "C" {
             b.c_stub_source()
                 .contains("moonbit_make_bytes((int32_t)sizeof(result), 0)")
         );
+    }
+
+    #[test]
+    fn defaults_external_pointer_returns_to_nullable_and_allows_overrides() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)] pub struct Context { _private: [u8; 0] }
+unsafe extern "C" {
+  pub fn get_default() -> *mut Context;
+  pub fn get_nonnull() -> *mut Context;
+  pub fn set_default(value: *mut Context);
+  pub fn set_nullable(value: *mut Context);
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrowed,
+            &|function, position| match (function, position) {
+                ("get_nonnull", NullabilityPosition::Return) => Nullability::NonNull,
+                ("set_nullable", NullabilityPosition::Parameter(name)) if name == "value" => {
+                    Nullability::Nullable
+                }
+                _ => Nullability::Unspecified,
+            },
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+        let moon = b.moonbit_source();
+        assert!(moon.contains("pub fn get_default() -> Context?"));
+        assert!(moon.contains("pub extern \"c\" fn get_nonnull() -> Context"));
+        assert!(moon.contains("pub extern \"c\" fn set_default(value : Context)"));
+        assert!(moon.contains("pub fn set_nullable(value : Context?)"));
+        assert!(moon.contains("None => Context::null()"));
+        assert!(moon.contains("if result.is_null()"));
     }
 
     #[test]
@@ -1084,6 +1478,7 @@ unsafe extern "C" { pub fn LIB_getCount() -> LIB_count_t; }
             |_| true,
             |_| true,
             &|_, _| Ownership::Borrowed,
+            &default_nullability,
             function_rename,
             type_rename,
             constant_rename,

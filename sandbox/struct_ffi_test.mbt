@@ -36,6 +36,14 @@ test "pointer field in an input struct" {
 }
 
 ///|
+test "external pointer return is nullable by default" {
+  match test_context_null() {
+    None => ()
+    Some(_) => fail("expected None")
+  }
+}
+
+///|
 test "double pointer to an external context" {
   let context = test_context_ptr()
   test_context_create(context)

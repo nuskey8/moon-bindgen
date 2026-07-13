@@ -12,6 +12,7 @@ use std::{
 };
 
 type OwnershipResolver = dyn Fn(&str, &str) -> Ownership;
+type NullabilityResolver = dyn Fn(&str, NullabilityPosition) -> Nullability;
 
 pub struct Builder {
     input_bindgen_files: Vec<PathBuf>,
@@ -25,6 +26,7 @@ pub struct Builder {
     type_filter: fn(String) -> bool,
     constant_filter: fn(String) -> bool,
     ownership_resolver: Box<OwnershipResolver>,
+    nullability_resolver: Box<NullabilityResolver>,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
     constant_rename: fn(String) -> String,
@@ -44,6 +46,7 @@ impl Default for Builder {
             type_filter: |name| !name.starts_with('_'),
             constant_filter: |name| !name.starts_with('_'),
             ownership_resolver: Box::new(|_, _| Ownership::Borrowed),
+            nullability_resolver: Box::new(|_, _| Nullability::Unspecified),
             function_rename: |name| name.to_snake_case(),
             type_rename: |name| name.to_upper_camel_case(),
             constant_rename: |name| name.to_shouty_snake_case(),
@@ -65,6 +68,23 @@ pub enum Ownership {
     #[default]
     Borrowed,
     Owned,
+}
+
+/// Whether a C pointer position accepts or produces null.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Nullability {
+    /// Use the position-dependent default.
+    #[default]
+    Unspecified,
+    NonNull,
+    Nullable,
+}
+
+/// A function signature position passed to the nullability resolver.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NullabilityPosition {
+    Return,
+    Parameter(String),
 }
 
 impl Visibility {
@@ -151,6 +171,16 @@ impl Builder {
         self
     }
 
+    /// Resolves pointer nullability using original Rust names. Unspecified
+    /// external-pointer returns default to nullable; parameters default to non-null.
+    pub fn moonbit_nullability_resolver<F>(mut self, resolver: F) -> Self
+    where
+        F: Fn(&str, NullabilityPosition) -> Nullability + 'static,
+    {
+        self.nullability_resolver = Box::new(resolver);
+        self
+    }
+
     /// Renames functions. The default converts names to snake_case.
     pub fn moonbit_function_rename(mut self, rename: fn(String) -> String) -> Self {
         self.function_rename = rename;
@@ -198,6 +228,7 @@ impl Builder {
             self.type_filter,
             self.constant_filter,
             self.ownership_resolver.as_ref(),
+            self.nullability_resolver.as_ref(),
             self.function_rename,
             self.type_rename,
             self.constant_rename,
