@@ -16,6 +16,13 @@ typedef struct TestSlice {
   uint64_t len;
 } TestSlice;
 
+typedef struct TestContext {
+  int32_t value;
+} TestContext;
+
+static TestContext test_context = {1234};
+static int32_t test_integer = 42;
+
 TestPoint test_point_translate(TestPoint point, int32_t dx, int32_t dy) {
   point.x += dx;
   point.y += dy;
@@ -38,4 +45,24 @@ uint32_t test_slice_sum(TestSlice slice) {
     result += slice.data[i];
   }
   return result;
+}
+
+TestContext *test_context_null(void) {
+  return 0;
+}
+
+void test_context_create(TestContext **out) {
+  *out = &test_context;
+}
+
+int32_t test_context_value(const TestContext *context) {
+  return context->value;
+}
+
+void test_context_pointer_pointer(TestContext ***out) {
+  **out = &test_context;
+}
+
+void test_int_pointer(int32_t **out) {
+  *out = &test_integer;
 }

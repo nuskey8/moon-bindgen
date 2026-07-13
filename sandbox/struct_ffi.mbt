@@ -20,6 +20,24 @@ pub(all) struct TestSlice {
 }
 
 ///|
+#external
+pub type TestContext // #[repr(C)] struct
+
+#borrow(out)
+pub extern "c" fn test_context_create(out : Ref[TestContext]) = "test_context_create"
+
+pub extern "c" fn test_context_null() -> TestContext = "test_context_null"
+
+#borrow(out)
+pub extern "c" fn test_context_pointer_pointer(out : Ref[Ref[TestContext]]) = "test_context_pointer_pointer"
+
+#borrow(context)
+pub extern "c" fn test_context_value(context : TestContext) -> Int = "test_context_value"
+
+#borrow(out)
+pub extern "c" fn test_int_pointer(out : Ref[Ref[Int]]) = "test_int_pointer"
+
+///|
 priv struct TestLineMoonBindgenRepr(Bytes)
 
 ///|
