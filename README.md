@@ -119,6 +119,24 @@ moon_bindgen::Builder::default()
 
 ```
 
+## Nullability
+
+You can modify pointer nullability using `moonbit_nullability_resolver()`. By default, only return values ​​are treated as `Ref[T]?`.
+
+```rust
+moon_bindgen::Builder::default()
+    .input_bindgen_file("src/ffi.rs")
+    .moonbit_nullability_resolver(|function, position| match (function, position) {
+        ("context_get", moon_bindgen::NullabilityPosition::Return) => {
+            moon_bindgen::Nullability::NonNull
+        }
+        ("context_set", moon_bindgen::NullabilityPosition::Parameter(name))
+            if name == "context" => moon_bindgen::Nullability::Nullable,
+        _ => moon_bindgen::Nullability::Unspecified,
+    })
+    .generate()?;
+```
+
 ## Type Marshalling
 
 | Rust | MoonBit |

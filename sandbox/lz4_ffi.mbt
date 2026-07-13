@@ -22,6 +22,57 @@ pub type Lz4StreamTInternal // #[repr(C)] struct
 pub type Lz4StreamU // C union
 
 ///|
+extern "c" fn moon_bindgen_lz4_stream_decode_t_null() -> Lz4StreamDecodeT = "moon_bindgen_lz4_stream_decode_t_null"
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_is_null(value : Lz4StreamDecodeT) -> Bool = "moon_bindgen_lz4_stream_decode_t_is_null"
+
+///|
+pub fn Lz4StreamDecodeT::null() -> Lz4StreamDecodeT {
+  moon_bindgen_lz4_stream_decode_t_null()
+}
+
+///|
+pub fn Lz4StreamDecodeT::is_null(self : Lz4StreamDecodeT) -> Bool {
+  moon_bindgen_lz4_stream_decode_t_is_null(self)
+}
+
+///|
+extern "c" fn moon_bindgen_lz4_stream_t_null() -> Lz4StreamT = "moon_bindgen_lz4_stream_t_null"
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_lz4_stream_t_is_null(value : Lz4StreamT) -> Bool = "moon_bindgen_lz4_stream_t_is_null"
+
+///|
+pub fn Lz4StreamT::null() -> Lz4StreamT {
+  moon_bindgen_lz4_stream_t_null()
+}
+
+///|
+pub fn Lz4StreamT::is_null(self : Lz4StreamT) -> Bool {
+  moon_bindgen_lz4_stream_t_is_null(self)
+}
+
+///|
+extern "c" fn moon_bindgen_raw_ptr_null() -> RawPtr = "moon_bindgen_raw_ptr_null"
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_raw_ptr_is_null(value : RawPtr) -> Bool = "moon_bindgen_raw_ptr_is_null"
+
+///|
+pub fn RawPtr::null() -> RawPtr {
+  moon_bindgen_raw_ptr_null()
+}
+
+///|
+pub fn RawPtr::is_null(self : RawPtr) -> Bool {
+  moon_bindgen_raw_ptr_is_null(self)
+}
+
+///|
 pub type Lz4Byte = Byte
 
 ///|
@@ -306,11 +357,41 @@ pub extern "c" fn lz4_compress_limited_output_with_state(state : RawPtr, source 
 pub extern "c" fn lz4_compress_with_state(state : RawPtr, source : Bytes, dest : Bytes, input_size : Int) -> Int = "LZ4_compress_withState"
 
 #borrow(input_buffer)
-pub extern "c" fn lz4_create(input_buffer : Bytes) -> RawPtr = "LZ4_create"
+extern "c" fn moon_bindgen_lz4_create_raw(input_buffer : Bytes) -> RawPtr = "LZ4_create"
 
-pub extern "c" fn lz4_create_stream() -> Lz4StreamT = "LZ4_createStream"
+///|
+pub fn lz4_create(input_buffer : Bytes) -> RawPtr? {
+  let result = moon_bindgen_lz4_create_raw(input_buffer)
+  if result.is_null() {
+    None
+  } else {
+    Some(result)
+  }
+}
 
-pub extern "c" fn lz4_create_stream_decode() -> Lz4StreamDecodeT = "LZ4_createStreamDecode"
+extern "c" fn moon_bindgen_lz4_create_stream_raw() -> Lz4StreamT = "LZ4_createStream"
+
+///|
+pub fn lz4_create_stream() -> Lz4StreamT? {
+  let result = moon_bindgen_lz4_create_stream_raw()
+  if result.is_null() {
+    None
+  } else {
+    Some(result)
+  }
+}
+
+extern "c" fn moon_bindgen_lz4_create_stream_decode_raw() -> Lz4StreamDecodeT = "LZ4_createStreamDecode"
+
+///|
+pub fn lz4_create_stream_decode() -> Lz4StreamDecodeT? {
+  let result = moon_bindgen_lz4_create_stream_decode_raw()
+  if result.is_null() {
+    None
+  } else {
+    Some(result)
+  }
+}
 
 pub extern "c" fn lz4_decoder_ring_buffer_size(max_block_size : Int) -> Int = "LZ4_decoderRingBufferSize"
 
@@ -351,7 +432,17 @@ pub extern "c" fn lz4_free_stream(stream_ptr : Lz4StreamT) -> Int = "LZ4_freeStr
 pub extern "c" fn lz4_free_stream_decode(lz4_stream : Lz4StreamDecodeT) -> Int = "LZ4_freeStreamDecode"
 
 #borrow(state_buffer)
-pub extern "c" fn lz4_init_stream(state_buffer : RawPtr, size : UInt64) -> Lz4StreamT = "LZ4_initStream"
+extern "c" fn moon_bindgen_lz4_init_stream_raw(state_buffer : RawPtr, size : UInt64) -> Lz4StreamT = "LZ4_initStream"
+
+///|
+pub fn lz4_init_stream(state_buffer : RawPtr, size : UInt64) -> Lz4StreamT? {
+  let result = moon_bindgen_lz4_init_stream_raw(state_buffer, size)
+  if result.is_null() {
+    None
+  } else {
+    Some(result)
+  }
+}
 
 #borrow(stream_ptr, dictionary)
 pub extern "c" fn lz4_load_dict(stream_ptr : Lz4StreamT, dictionary : Bytes, dict_size : Int) -> Int = "LZ4_loadDict"

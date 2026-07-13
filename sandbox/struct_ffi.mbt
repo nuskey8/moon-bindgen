@@ -49,10 +49,37 @@ pub fn TestContextPtrPtr::deref(self : TestContextPtrPtr) -> TestContextPtr {
   moon_bindgen_test_context_ptr_ptr_deref(self)
 }
 
+///|
+extern "c" fn moon_bindgen_test_context_null() -> TestContext = "moon_bindgen_test_context_null"
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_test_context_is_null(value : TestContext) -> Bool = "moon_bindgen_test_context_is_null"
+
+///|
+pub fn TestContext::null() -> TestContext {
+  moon_bindgen_test_context_null()
+}
+
+///|
+pub fn TestContext::is_null(self : TestContext) -> Bool {
+  moon_bindgen_test_context_is_null(self)
+}
+
 #borrow(out)
 pub extern "c" fn test_context_create(out : TestContextPtr) = "test_context_create"
 
-pub extern "c" fn test_context_null() -> TestContext = "test_context_null"
+extern "c" fn moon_bindgen_test_context_null_raw() -> TestContext = "test_context_null"
+
+///|
+pub fn test_context_null() -> TestContext? {
+  let result = moon_bindgen_test_context_null_raw()
+  if result.is_null() {
+    None
+  } else {
+    Some(result)
+  }
+}
 
 #borrow(out)
 pub extern "c" fn test_context_pointer_pointer(out : TestContextPtrPtr) = "test_context_pointer_pointer"

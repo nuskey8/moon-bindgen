@@ -144,11 +144,11 @@ pub fn lz4_compress_limited_output_with_state(RawPtr, Bytes, Bytes, Int, Int) ->
 
 pub fn lz4_compress_with_state(RawPtr, Bytes, Bytes, Int) -> Int
 
-pub fn lz4_create(Bytes) -> RawPtr
+pub fn lz4_create(Bytes) -> RawPtr?
 
-pub fn lz4_create_stream() -> Lz4StreamU
+pub fn lz4_create_stream() -> Lz4StreamU?
 
-pub fn lz4_create_stream_decode() -> Lz4StreamDecodeU
+pub fn lz4_create_stream_decode() -> Lz4StreamDecodeU?
 
 pub fn lz4_decoder_ring_buffer_size(Int) -> Int
 
@@ -176,7 +176,7 @@ pub fn lz4_free_stream(Lz4StreamU) -> Int
 
 pub fn lz4_free_stream_decode(Lz4StreamDecodeU) -> Int
 
-pub fn lz4_init_stream(RawPtr, UInt64) -> Lz4StreamU
+pub fn lz4_init_stream(RawPtr, UInt64) -> Lz4StreamU?
 
 pub fn lz4_load_dict(Lz4StreamU, Bytes, Int) -> Int
 
@@ -210,7 +210,7 @@ pub fn my_add(Int, Int) -> Int
 
 pub fn test_context_create(TestContextPtr) -> Unit
 
-pub fn test_context_null() -> TestContext
+pub fn test_context_null() -> TestContext?
 
 pub fn test_context_pointer_pointer(TestContextPtrPtr) -> Unit
 
@@ -239,6 +239,8 @@ pub type Lz4StreamDecodeTInternal
 #alias(Lz4StreamDecodeT)
 #external
 pub type Lz4StreamDecodeU
+pub fn Lz4StreamDecodeU::is_null(Self) -> Bool
+pub fn Lz4StreamDecodeU::null() -> Self
 
 #external
 pub type Lz4StreamTInternal
@@ -246,12 +248,18 @@ pub type Lz4StreamTInternal
 #alias(Lz4StreamT)
 #external
 pub type Lz4StreamU
+pub fn Lz4StreamU::is_null(Self) -> Bool
+pub fn Lz4StreamU::null() -> Self
 
 #external
 pub type RawPtr
+pub fn RawPtr::is_null(Self) -> Bool
+pub fn RawPtr::null() -> Self
 
 #external
 pub type TestContext
+pub fn TestContext::is_null(Self) -> Bool
+pub fn TestContext::null() -> Self
 
 #external
 pub type TestContextPtr

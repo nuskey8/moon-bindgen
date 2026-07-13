@@ -110,6 +110,24 @@ moon_bindgen::Builder::default()
     .write_moonbit_ffi_to_file("../ffi.mbt")?;
 ```
 
+## Nullability
+
+ポインタのnullabilityを`moonbit_nullability_resolver()`で変更できます。デフォルトでは戻り値のみが`Ref[T]?`で扱われます。
+
+```rust
+moon_bindgen::Builder::default()
+    .input_bindgen_file("src/ffi.rs")
+    .moonbit_nullability_resolver(|function, position| match (function, position) {
+        ("context_get", moon_bindgen::NullabilityPosition::Return) => {
+            moon_bindgen::Nullability::NonNull
+        }
+        ("context_set", moon_bindgen::NullabilityPosition::Parameter(name))
+            if name == "context" => moon_bindgen::Nullability::Nullable,
+        _ => moon_bindgen::Nullability::Unspecified,
+    })
+    .generate()?;
+```
+
 ## 型のマーシャリング
 
 | Rust                               | MoonBit                    |

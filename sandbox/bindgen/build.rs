@@ -18,6 +18,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     moon_bindgen::Builder::default()
         .input_extern_file("src/struct_ffi.rs")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
+        .moonbit_nullability_resolver(|function, position| match (function, position) {
+            (
+                "test_context_ptr" | "test_context_ptr_ptr",
+                moon_bindgen::NullabilityPosition::Return,
+            ) => moon_bindgen::Nullability::NonNull,
+            _ => moon_bindgen::Nullability::Unspecified,
+        })
         .c_stub_file_header("#include <stddef.h>")
         .generate()?
         .write_to_file("../struct_ffi.mbt", "../struct_ffi_stub.c")?;
@@ -33,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .moonbit_visibility(moon_bindgen::Visibility::Public)
         .moonbit_ownership_resolver(|_, _| moon_bindgen::Ownership::Borrowed)
         .generate()?
-        .write_moonbit_to_file(moonbit_bindings)?;
+        .write_to_file(moonbit_bindings, manifest_dir.join("../lz4_ffi_stub.c"))?;
 
     Ok(())
 }
