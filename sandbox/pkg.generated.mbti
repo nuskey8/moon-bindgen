@@ -206,11 +206,29 @@ pub fn lz4_version_number() -> Int
 
 pub fn lz4_version_string() -> Bytes
 
+pub fn my_add(Int, Int) -> Int
+
+pub fn test_context_create(TestContextPtr) -> Unit
+
+pub fn test_context_null() -> TestContext
+
+pub fn test_context_pointer_pointer(TestContextPtrPtr) -> Unit
+
+pub fn test_context_ptr() -> TestContextPtr
+
+pub fn test_context_ptr_ptr() -> TestContextPtrPtr
+
+pub fn test_context_value(TestContext) -> Int
+
+pub fn test_int_pointer(@ref.Ref[@ref.Ref[Int]]) -> Unit
+
 pub fn test_line_translate(TestLine, Int, Int) -> TestLine
 
 pub fn test_point_score(TestPoint) -> Int
 
 pub fn test_point_translate(TestPoint, Int, Int) -> TestPoint
+
+pub fn test_slice_sum(TestSlice) -> UInt
 
 // Errors
 
@@ -232,6 +250,17 @@ pub type Lz4StreamU
 #external
 pub type RawPtr
 
+#external
+pub type TestContext
+
+#external
+pub type TestContextPtr
+pub fn TestContextPtr::deref(Self) -> TestContext
+
+#external
+pub type TestContextPtrPtr
+pub fn TestContextPtrPtr::deref(Self) -> TestContextPtr
+
 pub(all) struct TestLine {
   start : TestPoint
   end : TestPoint
@@ -241,6 +270,11 @@ pub(all) struct TestPoint {
   x : Int
   y : Int
   rgba : FixedArray[Byte]
+}
+
+pub(all) struct TestSlice {
+  data : Bytes
+  len : UInt64
 }
 
 // Type aliases

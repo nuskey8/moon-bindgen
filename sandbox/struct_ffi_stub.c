@@ -123,3 +123,13 @@ uint32_t moon_bindgen_test_slice_sum(moonbit_bytes_t slice_data, uint64_t slice_
   return test_slice_sum(moon_bindgen_arg_slice);
 }
 
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_test_context_ptr_deref(void *self) {
+  return *(void **)self;
+}
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_test_context_ptr_ptr_deref(void *self) {
+  return *(void **)self;
+}
+

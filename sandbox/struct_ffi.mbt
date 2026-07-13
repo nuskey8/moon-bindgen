@@ -20,6 +20,54 @@ pub(all) struct TestSlice {
 }
 
 ///|
+#external
+pub type TestContext // #[repr(C)] struct
+
+///|
+#external
+pub type TestContextPtr // pointer to TestContext
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_test_context_ptr_deref(value : TestContextPtr) -> TestContext = "moon_bindgen_test_context_ptr_deref"
+
+///|
+pub fn TestContextPtr::deref(self : TestContextPtr) -> TestContext {
+  moon_bindgen_test_context_ptr_deref(self)
+}
+
+///|
+#external
+pub type TestContextPtrPtr // pointer to TestContextPtr
+
+///|
+#borrow(value)
+extern "c" fn moon_bindgen_test_context_ptr_ptr_deref(value : TestContextPtrPtr) -> TestContextPtr = "moon_bindgen_test_context_ptr_ptr_deref"
+
+///|
+pub fn TestContextPtrPtr::deref(self : TestContextPtrPtr) -> TestContextPtr {
+  moon_bindgen_test_context_ptr_ptr_deref(self)
+}
+
+#borrow(out)
+pub extern "c" fn test_context_create(out : TestContextPtr) = "test_context_create"
+
+pub extern "c" fn test_context_null() -> TestContext = "test_context_null"
+
+#borrow(out)
+pub extern "c" fn test_context_pointer_pointer(out : TestContextPtrPtr) = "test_context_pointer_pointer"
+
+pub extern "c" fn test_context_ptr() -> TestContextPtr = "test_context_ptr"
+
+pub extern "c" fn test_context_ptr_ptr() -> TestContextPtrPtr = "test_context_ptr_ptr"
+
+#borrow(context)
+pub extern "c" fn test_context_value(context : TestContext) -> Int = "test_context_value"
+
+#borrow(out)
+pub extern "c" fn test_int_pointer(out : Ref[Ref[Int]]) = "test_int_pointer"
+
+///|
 priv struct TestLineMoonBindgenRepr(Bytes)
 
 ///|

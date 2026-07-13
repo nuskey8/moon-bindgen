@@ -1,6 +1,9 @@
 use std::{env, error::Error, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=src/struct_ffi.rs");
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
     let header = manifest_dir.join("../../submodules/lz4/lib/lz4.h");
     let rust_bindings = PathBuf::from(env::var("OUT_DIR")?).join("lz4_bindings.rs");

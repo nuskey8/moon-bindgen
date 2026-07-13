@@ -484,7 +484,7 @@ fn wrapper_type_supported(ty: &Type, values: &BTreeSet<String>, model: &Model) -
             primitive_c_type(name).is_some()
                 || (values.contains(name) && struct_supported(name, model, &mut vec![]))
         }
-        Type::Pointer { inner, .. } => matches!(resolve_alias(inner, model), Type::Path(_)),
+        Type::Pointer { inner, .. } => pointer_pointee_supported(inner, model),
         Type::Array { .. } | Type::FunctionPointer { .. } | Type::Unsupported => false,
     }
 }
@@ -502,7 +502,7 @@ fn struct_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool 
         Type::Path(path) if model.structs.contains_key(last(path)) => {
             struct_supported(last(path), model, stack)
         }
-        Type::Pointer { inner, .. } => matches!(resolve_alias(inner, model), Type::Path(_)),
+        Type::Pointer { inner, .. } => pointer_pointee_supported(inner, model),
         Type::Array {
             inner,
             len: Some(len),
@@ -562,6 +562,9 @@ fn resolve_alias<'a>(ty: &'a Type, model: &'a Model) -> &'a Type {
 }
 
 fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<String> {
+    if let Some(name) = opaque_pointer_carrier_name(ty, model, rename) {
+        return Some(name);
+    }
     match resolve_alias(ty, model) {
         Type::Unit => Some("Unit".into()),
         Type::Path(path) => Some(match last(path) {
@@ -585,13 +588,32 @@ fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<S
                 Some(format!("Ref[{}]", moon_type(inner, model, rename)?))
             }
             Type::Path(path) => Some(type_name(last(path), rename)),
-            _ => None,
+            _ => moon_type(inner, model, rename).map(|ty| format!("Ref[{ty}]")),
         },
         Type::Array { inner, .. } => {
             Some(format!("FixedArray[{}]", moon_type(inner, model, rename)?))
         }
         _ => None,
     }
+}
+
+fn opaque_pointer_carrier_name(
+    ty: &Type,
+    model: &Model,
+    rename: fn(String) -> String,
+) -> Option<String> {
+    let mut current = resolve_alias(ty, model);
+    let mut depth = 0;
+    while let Type::Pointer { inner, .. } = current {
+        depth += 1;
+        current = resolve_alias(inner, model);
+    }
+    let Type::Path(path) = current else {
+        return None;
+    };
+    let base = last(path);
+    (depth >= 2 && primitive_c_type(base).is_none() && base != "c_void")
+        .then(|| format!("{}{}", type_name(base, rename), "Ptr".repeat(depth - 1)))
 }
 
 fn c_type(ty: &Type, model: &Model) -> Option<String> {
@@ -630,10 +652,19 @@ fn c_abi_type(ty: &Type, model: &Model) -> Option<String> {
             }
             Type::Path(path) if primitive_c_type(last(path)).is_some() => c_type(ty, model),
             Type::Path(_) => Some("void *".into()),
+            Type::Pointer { .. } => c_type(ty, model),
             _ => None,
         },
         Type::Array { inner, .. } => Some(format!("{} *", c_type(inner, model)?)),
         _ => c_type(ty, model),
+    }
+}
+
+fn pointer_pointee_supported(ty: &Type, model: &Model) -> bool {
+    match resolve_alias(ty, model) {
+        Type::Path(_) => true,
+        Type::Pointer { inner, .. } => pointer_pointee_supported(inner, model),
+        _ => false,
     }
 }
 
