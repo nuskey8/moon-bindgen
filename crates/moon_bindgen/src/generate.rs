@@ -152,7 +152,7 @@ pub(crate) fn render(
         if !type_filter(name.clone()) {
             continue;
         }
-        if let Some(ty) = moon_alias_type(name, alias, model, type_rename) {
+        if let Some(ty) = moon_alias_type(name, alias, model, type_filter, type_rename) {
             out.push_str(&format!(
                 "///|\n{}type {} = {}\n\n",
                 visibility.prefix(),
@@ -293,6 +293,7 @@ fn moon_alias_type(
     name: &str,
     alias: &Type,
     model: &Model,
+    type_filter: fn(String) -> bool,
     type_rename: fn(String) -> String,
 ) -> Option<String> {
     let emitted_name = renamed_type_ident(name, type_rename);
@@ -300,13 +301,15 @@ fn moon_alias_type(
     let mut seen = BTreeSet::new();
     loop {
         let ty = moon_type(current, type_rename)?;
-        if ty != emitted_name {
-            return Some(ty);
-        }
         let Type::Path(path) = current else {
-            return None;
+            return (ty != emitted_name).then_some(ty);
         };
         let target = path.rsplit("::").next()?;
+        let should_resolve = ty == emitted_name
+            || (!type_filter(target.to_owned()) && model.aliases.contains_key(target));
+        if !should_resolve {
+            return Some(ty);
+        }
         if !seen.insert(target) {
             return None;
         }
@@ -1188,10 +1191,23 @@ unsafe extern "C" {
     fn resolves_aliases_that_collapse_to_the_same_moonbit_name() {
         let f = syn::parse_file(
             r#"
-pub type __int_least16_t = ::std::os::raw::c_short;
-pub type int_least16_t = __int_least16_t;
-pub type __uintmax_t = ::std::os::raw::c_ulong;
-pub type uintmax_t = __uintmax_t;
+pub type __int16_t = ::std::os::raw::c_short;
+pub type __int8_t = i8;
+pub type __int32_t = i32;
+pub type __int64_t = i64;
+pub type int_least8_t = __int8_t;
+pub type int_least16_t = __int16_t;
+pub type int_least32_t = __int32_t;
+pub type int_least64_t = __int64_t;
+pub type __uint8_t = u8;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __uint32_t = u32;
+pub type __uint64_t = ::std::os::raw::c_ulong;
+pub type uint_least8_t = __uint8_t;
+pub type uint_least16_t = __uint16_t;
+pub type uint_least32_t = __uint32_t;
+pub type uint_least64_t = __uint64_t;
+pub type uintmax_t = __uint64_t;
 "#,
         )
         .unwrap();
@@ -1212,6 +1228,16 @@ pub type uintmax_t = __uintmax_t;
             default_constant_rename,
         );
         assert!(b.moonbit_source().contains("pub type IntLeast16T = Int"));
+        assert!(b.moonbit_source().contains("pub type IntLeast8T = Byte"));
+        assert!(b.moonbit_source().contains("pub type IntLeast32T = Int"));
+        assert!(b.moonbit_source().contains("pub type IntLeast64T = Int64"));
+        assert!(b.moonbit_source().contains("pub type UintLeast8T = Byte"));
+        assert!(b.moonbit_source().contains("pub type UintLeast16T = Int"));
+        assert!(b.moonbit_source().contains("pub type UintLeast32T = UInt"));
+        assert!(
+            b.moonbit_source()
+                .contains("pub type UintLeast64T = UInt64")
+        );
         assert!(b.moonbit_source().contains("pub type UintmaxT = UInt64"));
         assert!(!b.moonbit_source().contains("IntLeast16T = IntLeast16T"));
         assert!(!b.moonbit_source().contains("UintmaxT = UintmaxT"));
