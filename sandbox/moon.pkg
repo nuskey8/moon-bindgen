@@ -1,0 +1,9 @@
+options(
+  "native-stub": [ "stub.c", "struct_api.c", "struct_ffi_stub.c" ],
+  targets: {
+    "lz4_ffi.mbt": [ "native" ],
+    "lz4_ffi_test.mbt": [ "native" ],
+    "struct_ffi.mbt": [ "native" ],
+    "struct_ffi_test.mbt": [ "native" ],
+  },
+)

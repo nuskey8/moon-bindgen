@@ -1,0 +1,296 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "nuskey8/sandbox"
+
+import {
+  "moonbitlang/core/ref",
+}
+
+// Values
+pub const INT16_MAX : UInt = 32767
+
+pub const INT16_MIN : Int = -32768
+
+pub const INT32_MAX : UInt = 2147483647
+
+pub const INT32_MIN : Int = -2147483648
+
+pub const INT64_MAX : UInt64 = 9223372036854775807
+
+pub const INT64_MIN : Int64 = -9223372036854775808
+
+pub const INT8_MAX : UInt = 127
+
+pub const INT8_MIN : Int = -128
+
+pub const INTPTR_MAX : UInt64 = 9223372036854775807
+
+pub const INTPTR_MIN : Int64 = -9223372036854775808
+
+pub const INT_FAST16_MAX : UInt = 32767
+
+pub const INT_FAST16_MIN : Int = -32768
+
+pub const INT_FAST32_MAX : UInt = 2147483647
+
+pub const INT_FAST32_MIN : Int = -2147483648
+
+pub const INT_FAST64_MAX : UInt64 = 9223372036854775807
+
+pub const INT_FAST64_MIN : Int64 = -9223372036854775808
+
+pub const INT_FAST8_MAX : UInt = 127
+
+pub const INT_FAST8_MIN : Int = -128
+
+pub const INT_LEAST16_MAX : UInt = 32767
+
+pub const INT_LEAST16_MIN : Int = -32768
+
+pub const INT_LEAST32_MAX : UInt = 2147483647
+
+pub const INT_LEAST32_MIN : Int = -2147483648
+
+pub const INT_LEAST64_MAX : UInt64 = 9223372036854775807
+
+pub const INT_LEAST64_MIN : Int64 = -9223372036854775808
+
+pub const INT_LEAST8_MAX : UInt = 127
+
+pub const INT_LEAST8_MIN : Int = -128
+
+pub const LZ4_FREESTANDING : UInt = 0
+
+pub const LZ4_MAX_INPUT_SIZE : UInt = 2113929216
+
+pub const LZ4_MEMORY_USAGE_DEFAULT : UInt = 14
+
+pub const LZ4_MEMORY_USAGE_MAX : UInt = 20
+
+pub const LZ4_MEMORY_USAGE_MIN : UInt = 10
+
+pub const LZ4_STREAMDECODE_MINSIZE : UInt = 32
+
+pub const LZ4_VERSION_MAJOR : UInt = 1
+
+pub const LZ4_VERSION_MINOR : UInt = 10
+
+pub const LZ4_VERSION_NUMBER : UInt = 11000
+
+pub const LZ4_VERSION_RELEASE : UInt = 0
+
+pub const RSIZE_MAX : Int = -1
+
+pub const SIG_ATOMIC_MAX : UInt = 2147483647
+
+pub const SIG_ATOMIC_MIN : Int = -2147483648
+
+pub const SIZE_MAX : Int = -1
+
+pub const UINT16_MAX : UInt = 65535
+
+pub const UINT32_MAX : UInt = 4294967295
+
+pub const UINT64_MAX : Int = -1
+
+pub const UINT8_MAX : UInt = 255
+
+pub const UINTPTR_MAX : Int = -1
+
+pub const UINT_FAST16_MAX : UInt = 65535
+
+pub const UINT_FAST32_MAX : UInt = 4294967295
+
+pub const UINT_FAST64_MAX : Int = -1
+
+pub const UINT_FAST8_MAX : UInt = 255
+
+pub const UINT_LEAST16_MAX : UInt = 65535
+
+pub const UINT_LEAST32_MAX : UInt = 4294967295
+
+pub const UINT_LEAST64_MAX : Int = -1
+
+pub const UINT_LEAST8_MAX : UInt = 255
+
+pub const USE_CLANG_TYPES : UInt = 0
+
+pub const WINT_MAX : UInt = 2147483647
+
+pub const WINT_MIN : Int = -2147483648
+
+pub fn lz4_attach_dictionary(Lz4StreamU, Lz4StreamU) -> Unit
+
+pub fn lz4_compress(Bytes, Bytes, Int) -> Int
+
+pub fn lz4_compress_bound(Int) -> Int
+
+pub fn lz4_compress_continue(Lz4StreamU, Bytes, Bytes, Int) -> Int
+
+pub fn lz4_compress_default(Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_compress_dest_size(Bytes, Bytes, @ref.Ref[Int], Int) -> Int
+
+pub fn lz4_compress_fast(Bytes, Bytes, Int, Int, Int) -> Int
+
+pub fn lz4_compress_fast_continue(Lz4StreamU, Bytes, Bytes, Int, Int, Int) -> Int
+
+pub fn lz4_compress_fast_ext_state(RawPtr, Bytes, Bytes, Int, Int, Int) -> Int
+
+pub fn lz4_compress_limited_output(Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_compress_limited_output_continue(Lz4StreamU, Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_compress_limited_output_with_state(RawPtr, Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_compress_with_state(RawPtr, Bytes, Bytes, Int) -> Int
+
+pub fn lz4_create(Bytes) -> RawPtr
+
+pub fn lz4_create_stream() -> Lz4StreamU
+
+pub fn lz4_create_stream_decode() -> Lz4StreamDecodeU
+
+pub fn lz4_decoder_ring_buffer_size(Int) -> Int
+
+pub fn lz4_decompress_fast(Bytes, Bytes, Int) -> Int
+
+pub fn lz4_decompress_fast_continue(Lz4StreamDecodeU, Bytes, Bytes, Int) -> Int
+
+pub fn lz4_decompress_fast_using_dict(Bytes, Bytes, Int, Bytes, Int) -> Int
+
+pub fn lz4_decompress_fast_with_prefix64k(Bytes, Bytes, Int) -> Int
+
+pub fn lz4_decompress_safe(Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_decompress_safe_continue(Lz4StreamDecodeU, Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_decompress_safe_partial(Bytes, Bytes, Int, Int, Int) -> Int
+
+pub fn lz4_decompress_safe_partial_using_dict(Bytes, Bytes, Int, Int, Int, Bytes, Int) -> Int
+
+pub fn lz4_decompress_safe_using_dict(Bytes, Bytes, Int, Int, Bytes, Int) -> Int
+
+pub fn lz4_decompress_safe_with_prefix64k(Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_free_stream(Lz4StreamU) -> Int
+
+pub fn lz4_free_stream_decode(Lz4StreamDecodeU) -> Int
+
+pub fn lz4_init_stream(RawPtr, UInt64) -> Lz4StreamU
+
+pub fn lz4_load_dict(Lz4StreamU, Bytes, Int) -> Int
+
+pub fn lz4_load_dict_slow(Lz4StreamU, Bytes, Int) -> Int
+
+pub fn lz4_reset_stream(Lz4StreamU) -> Unit
+
+pub fn lz4_reset_stream_fast(Lz4StreamU) -> Unit
+
+pub fn lz4_reset_stream_state(RawPtr, Bytes) -> Int
+
+pub fn lz4_save_dict(Lz4StreamU, Bytes, Int) -> Int
+
+pub fn lz4_set_stream_decode(Lz4StreamDecodeU, Bytes, Int) -> Int
+
+pub fn lz4_sizeof_state() -> Int
+
+pub fn lz4_sizeof_stream_state() -> Int
+
+pub fn lz4_slide_input_buffer(RawPtr) -> Bytes
+
+pub fn lz4_uncompress(Bytes, Bytes, Int) -> Int
+
+pub fn lz4_uncompress_unknown_output_size(Bytes, Bytes, Int, Int) -> Int
+
+pub fn lz4_version_number() -> Int
+
+pub fn lz4_version_string() -> Bytes
+
+pub fn test_line_translate(TestLine, Int, Int) -> TestLine
+
+pub fn test_point_score(TestPoint) -> Int
+
+pub fn test_point_translate(TestPoint, Int, Int) -> TestPoint
+
+// Errors
+
+// Types and methods
+#external
+pub type Lz4StreamDecodeTInternal
+
+#alias(Lz4StreamDecodeT)
+#external
+pub type Lz4StreamDecodeU
+
+#external
+pub type Lz4StreamTInternal
+
+#alias(Lz4StreamT)
+#external
+pub type Lz4StreamU
+
+#external
+pub type RawPtr
+
+pub(all) struct TestLine {
+  start : TestPoint
+  end : TestPoint
+}
+
+pub(all) struct TestPoint {
+  x : Int
+  y : Int
+  rgba : FixedArray[Byte]
+}
+
+// Type aliases
+pub type IntFast16T = Int
+
+pub type IntFast32T = Int
+
+pub type IntFast64T = Int64
+
+pub type IntFast8T = Byte
+
+pub type IntLeast16T = Int
+
+pub type IntLeast32T = Int
+
+pub type IntLeast64T = Int64
+
+pub type IntLeast8T = Byte
+
+pub type IntmaxT = Int64
+
+pub type Lz4Byte = Byte
+
+pub type Lz4I8 = Byte
+
+pub type Lz4U16 = Int
+
+pub type Lz4U32 = UInt
+
+pub type MaxAlignT = Double
+
+pub type UintFast16T = Int
+
+pub type UintFast32T = UInt
+
+pub type UintFast64T = UInt64
+
+pub type UintFast8T = Byte
+
+pub type UintLeast16T = Int
+
+pub type UintLeast32T = UInt
+
+pub type UintLeast64T = UInt64
+
+pub type UintLeast8T = Byte
+
+pub type UintmaxT = UInt64
+
+pub type WcharT = Int
+
+// Traits
+

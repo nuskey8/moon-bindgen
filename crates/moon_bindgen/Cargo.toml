@@ -1,0 +1,13 @@
+[package]
+name = "moon_bindgen"
+version = "0.1.0"
+edition = "2024"
+description = "Automatically generates MoonBit FFI bindings to Rust/C libraries."
+license = "MIT"
+documentation = "https://docs.rs/moon_bindgen"
+repository = "https://github.com/nuskey8/moon-bindgen"
+
+[dependencies]
+heck = "0.5"
+syn = { version = "2", features = ["full", "parsing", "extra-traits"] }
+thiserror = "2"
