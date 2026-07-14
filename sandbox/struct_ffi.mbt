@@ -7,6 +7,11 @@ pub(all) struct TestLine {
 }
 
 ///|
+pub fn TestLine::new(start : TestPoint, end : TestPoint) -> TestLine {
+  TestLine::{ start, end }
+}
+
+///|
 pub(all) struct TestPoint {
   x : Int
   y : Int
@@ -14,9 +19,19 @@ pub(all) struct TestPoint {
 }
 
 ///|
+pub fn TestPoint::new(x : Int, y : Int, rgba : FixedArray[Byte]) -> TestPoint {
+  TestPoint::{ x, y, rgba }
+}
+
+///|
 pub(all) struct TestSlice {
   data : Bytes
   len : UInt64
+}
+
+///|
+pub fn TestSlice::new(data : Bytes, len : UInt64) -> TestSlice {
+  TestSlice::{ data, len }
 }
 
 ///|

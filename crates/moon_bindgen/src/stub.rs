@@ -118,6 +118,21 @@ pub(crate) fn render(
     }
 
     let mut c_types = String::new();
+    for structure in model.structs.values() {
+        c_types.push_str(&format!(
+            "typedef {} moon_bindgen_c_{} moon_bindgen_c_{};\n",
+            if structure.is_union {
+                "union"
+            } else {
+                "struct"
+            },
+            structure.name,
+            structure.name
+        ));
+    }
+    if !model.structs.is_empty() {
+        c_types.push('\n');
+    }
     let mut emitted = BTreeSet::new();
     for name in value_structs.iter().chain(&constructible_structs) {
         emit_c_struct(name, model, &mut emitted, &mut c_types);
@@ -286,8 +301,13 @@ fn emit_field_accessors(
         ctx.visibility.prefix()
     ));
     let c_ty = c_abi_type(&leaf.ty, ctx.model).unwrap();
+    let return_value = if matches!(resolve_alias(&leaf.ty, ctx.model), Type::Pointer { .. }) {
+        format!("({c_ty})value->{field_expr}")
+    } else {
+        format!("value->{field_expr}")
+    };
     c.push_str(&format!(
-        "MOONBIT_FFI_EXPORT\n{c_ty} {getter}(void *self) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  return value->{field_expr};\n}}\n\n"
+        "MOONBIT_FFI_EXPORT\n{c_ty} {getter}(void *self) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  return {return_value};\n}}\n\n"
     ));
     c.push_str(&format!(
         "MOONBIT_FFI_EXPORT\nvoid {setter}(void *self, {c_ty} field) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  value->{field_expr} = field;\n}}\n\n"
@@ -588,13 +608,13 @@ fn emit_c_struct(name: &str, model: &Model, emitted: &mut BTreeSet<String>, out:
             emit_c_struct(nested, model, emitted, out);
         }
     }
-    out.push_str(&format!("typedef struct moon_bindgen_c_{name} {{\n"));
+    out.push_str(&format!("struct moon_bindgen_c_{name} {{\n"));
     for field in &structure.fields {
         out.push_str("  ");
         out.push_str(&c_decl(&field.ty, &field.name, model).unwrap());
         out.push_str(";\n");
     }
-    out.push_str(&format!("}} moon_bindgen_c_{name};\n\n"));
+    out.push_str("};\n\n");
     emitted.insert(name.to_owned());
 }
 
