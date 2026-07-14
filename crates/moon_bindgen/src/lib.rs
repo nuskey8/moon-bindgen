@@ -45,7 +45,7 @@ impl Default for Builder {
             function_filter: |name| !name.starts_with('_'),
             type_filter: |name| !name.starts_with('_'),
             constant_filter: |name| !name.starts_with('_'),
-            ownership_resolver: Box::new(|_, _| Ownership::Borrowed),
+            ownership_resolver: Box::new(|_, _| Ownership::Borrow),
             nullability_resolver: Box::new(|_, _| Nullability::Unspecified),
             function_rename: |name| name.to_snake_case(),
             type_rename: |name| name.to_upper_camel_case(),
@@ -66,7 +66,7 @@ pub enum Visibility {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Ownership {
     #[default]
-    Borrowed,
+    Borrow,
     Owned,
 }
 

@@ -233,7 +233,7 @@ pub(crate) fn render(
             .collect::<Vec<_>>();
         let borrowed = ownerships
             .iter()
-            .filter(|(_, ownership)| *ownership == Ownership::Borrowed)
+            .filter(|(_, ownership)| *ownership == Ownership::Borrow)
             .map(|(name, _)| name.as_str())
             .collect::<Vec<_>>();
         if !borrowed.is_empty() {
@@ -460,7 +460,7 @@ fn emit_nullable_function(
             )
         })
         .collect::<Vec<_>>();
-    for (annotation, ownership) in [("borrow", Ownership::Borrowed), ("owned", Ownership::Owned)] {
+    for (annotation, ownership) in [("borrow", Ownership::Borrow), ("owned", Ownership::Owned)] {
         let names = ownerships
             .iter()
             .filter(|(_, value)| *value == ownership)
@@ -1006,7 +1006,7 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1067,7 +1067,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1108,7 +1108,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &|function, position| match (function, position) {
                 ("connect", NullabilityPosition::Parameter(name)) if name == "server_name" => {
                     Nullability::Nullable
@@ -1146,7 +1146,7 @@ unsafe extern "C" { pub fn visit(node: *const Node); }
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1177,7 +1177,7 @@ unsafe extern "C" { pub fn visit(node: *const Node); }
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1209,7 +1209,7 @@ unsafe extern "C" { pub fn library_count(context: *mut Context) -> Count; }
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1246,7 +1246,7 @@ unsafe extern "C" { pub fn library_count(context: *mut Context) -> Count; }
             |name| name.starts_with("LZ4_"),
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1280,7 +1280,7 @@ pub const DROP_CONST: u32 = 2;
             |_| true,
             |name| name.starts_with("Keep"),
             |name| name.starts_with("KEEP"),
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1318,7 +1318,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1377,7 +1377,7 @@ pub type uintmax_t = __uint64_t;
             |_| true,
             |name| !name.starts_with('_'),
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1419,7 +1419,7 @@ pub type uintmax_t = __uint64_t;
             |_| true,
             &|function, parameter| match (function, parameter) {
                 ("register_data", "kept") => Ownership::Owned,
-                _ => Ownership::Borrowed,
+                _ => Ownership::Borrow,
             },
             &default_nullability,
             default_function_rename,
@@ -1459,7 +1459,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1532,7 +1532,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             default_function_rename,
             default_type_rename,
@@ -1580,7 +1580,7 @@ unsafe extern "C" {
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &|function, position| match (function, position) {
                 ("get_nonnull", NullabilityPosition::Return) => Nullability::NonNull,
                 ("set_nullable", NullabilityPosition::Parameter(name)) if name == "value" => {
@@ -1633,7 +1633,7 @@ unsafe extern "C" { pub fn LIB_getCount() -> LIB_count_t; }
             |_| true,
             |_| true,
             |_| true,
-            &|_, _| Ownership::Borrowed,
+            &|_, _| Ownership::Borrow,
             &default_nullability,
             function_rename,
             type_rename,

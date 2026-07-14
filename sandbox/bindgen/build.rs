@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .input_bindgen_file(&rust_bindings)
         .moonbit_file_header("// Source: LZ4 1.10.0 (BSD-2-Clause)")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
-        .moonbit_ownership_resolver(|_, _| moon_bindgen::Ownership::Borrowed)
+        .moonbit_ownership_resolver(|_, _| moon_bindgen::Ownership::Borrow)
         .generate()?
         .write_to_file(moonbit_bindings, manifest_dir.join("../lz4_ffi_stub.c"))?;
 
