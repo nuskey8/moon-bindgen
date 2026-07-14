@@ -1013,6 +1013,26 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
             default_constant_rename,
         );
         assert!(b.moonbit_source().contains("#external\ntype Point"));
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::new(x : Int, y : Int) -> Point")
+        );
+        assert!(
+            b.c_stub_source()
+                .contains("void *moon_bindgen_point_new(int32_t x, int32_t y)")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::get_x(self : Point) -> Int")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::set_y(self : Point, value : Int) -> Unit")
+        );
+        assert!(
+            b.c_stub_source()
+                .contains("int32_t moon_bindgen_point_x_get(void *self)")
+        );
         assert!(b.moonbit_source().contains("#borrow(p)"));
         assert!(
             b.moonbit_source()
@@ -1105,6 +1125,38 @@ unsafe extern "C" {
         );
         assert!(b.moonbit_source().contains("#borrow(server_name, id)"));
         assert!(b.moonbit_source().contains("fn optional_data() -> Bytes?"));
+    }
+
+    #[test]
+    fn forward_declares_structs_referenced_by_pointer_fields() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)] pub struct Node { pub next: *const Node, pub value: i32 }
+unsafe extern "C" { pub fn visit(node: *const Node); }
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Private,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrowed,
+            &default_nullability,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+        let c = b.c_stub_source();
+        let declaration = "typedef struct moon_bindgen_c_Node moon_bindgen_c_Node;";
+        let definition = "struct moon_bindgen_c_Node {";
+        assert!(c.find(declaration).unwrap() < c.find(definition).unwrap());
+        assert!(c.contains("return (void *)value->next;"));
     }
 
     #[test]

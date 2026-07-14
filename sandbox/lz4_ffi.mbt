@@ -481,3 +481,183 @@ pub extern "c" fn lz4_uncompress_unknown_output_size(source : Bytes, dest : Byte
 pub extern "c" fn lz4_version_number() -> Int = "LZ4_versionNumber"
 
 pub extern "c" fn lz4_version_string() -> Bytes? = "LZ4_versionString"
+
+#borrow(external_dict, prefix_end)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_new(external_dict : Ref[Byte], prefix_end : Ref[Byte], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal = "moon_bindgen_lz4_stream_decode_t_internal_new"
+
+///|
+pub fn Lz4StreamDecodeTInternal::new(external_dict : Ref[Byte], prefix_end : Ref[Byte], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal {
+  moon_bindgen_lz4_stream_decode_t_internal_new(external_dict, prefix_end, ext_dict_size, prefix_size)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_get(object : Lz4StreamDecodeTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_get"
+
+///|
+pub fn Lz4StreamDecodeTInternal::get_external_dict(self : Lz4StreamDecodeTInternal) -> Ref[Byte] {
+  moon_bindgen_lz4_stream_decode_t_internal_external_dict_get(self)
+}
+
+#borrow(object, value)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_set(object : Lz4StreamDecodeTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_set"
+
+///|
+pub fn Lz4StreamDecodeTInternal::set_external_dict(self : Lz4StreamDecodeTInternal, value : Ref[Byte]) -> Unit {
+  moon_bindgen_lz4_stream_decode_t_internal_external_dict_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get(object : Lz4StreamDecodeTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get"
+
+///|
+pub fn Lz4StreamDecodeTInternal::get_prefix_end(self : Lz4StreamDecodeTInternal) -> Ref[Byte] {
+  moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get(self)
+}
+
+#borrow(object, value)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set(object : Lz4StreamDecodeTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set"
+
+///|
+pub fn Lz4StreamDecodeTInternal::set_prefix_end(self : Lz4StreamDecodeTInternal, value : Ref[Byte]) -> Unit {
+  moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_get(object : Lz4StreamDecodeTInternal) -> UInt64 = "moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_get"
+
+///|
+pub fn Lz4StreamDecodeTInternal::get_ext_dict_size(self : Lz4StreamDecodeTInternal) -> UInt64 {
+  moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_get(self)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_set(object : Lz4StreamDecodeTInternal, value : UInt64) = "moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_set"
+
+///|
+pub fn Lz4StreamDecodeTInternal::set_ext_dict_size(self : Lz4StreamDecodeTInternal, value : UInt64) -> Unit {
+  moon_bindgen_lz4_stream_decode_t_internal_ext_dict_size_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_size_get(object : Lz4StreamDecodeTInternal) -> UInt64 = "moon_bindgen_lz4_stream_decode_t_internal_prefix_size_get"
+
+///|
+pub fn Lz4StreamDecodeTInternal::get_prefix_size(self : Lz4StreamDecodeTInternal) -> UInt64 {
+  moon_bindgen_lz4_stream_decode_t_internal_prefix_size_get(self)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_size_set(object : Lz4StreamDecodeTInternal, value : UInt64) = "moon_bindgen_lz4_stream_decode_t_internal_prefix_size_set"
+
+///|
+pub fn Lz4StreamDecodeTInternal::set_prefix_size(self : Lz4StreamDecodeTInternal, value : UInt64) -> Unit {
+  moon_bindgen_lz4_stream_decode_t_internal_prefix_size_set(self, value)
+}
+
+#borrow(hash_table, dictionary, dict_ctx)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_new(hash_table : FixedArray[UInt], dictionary : Ref[Byte], dict_ctx : Lz4StreamTInternal, current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal = "moon_bindgen_lz4_stream_t_internal_new"
+
+///|
+pub fn Lz4StreamTInternal::new(hash_table : FixedArray[UInt], dictionary : Ref[Byte], dict_ctx : Lz4StreamTInternal, current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal {
+  if hash_table.length() != 4096 { abort("hash_table must contain exactly 4096 elements") }
+  moon_bindgen_lz4_stream_t_internal_new(hash_table, dictionary, dict_ctx, current_offset, table_type, dict_size)
+}
+
+#borrow(object, out)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_hash_table_get(object : Lz4StreamTInternal, out : FixedArray[UInt]) = "moon_bindgen_lz4_stream_t_internal_hash_table_get"
+
+///|
+pub fn Lz4StreamTInternal::get_hash_table(self : Lz4StreamTInternal) -> FixedArray[UInt] {
+  let out = FixedArray::make(4096, UInt::default())
+  moon_bindgen_lz4_stream_t_internal_hash_table_get(self, out)
+  out
+}
+
+#borrow(object, value)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_hash_table_set(object : Lz4StreamTInternal, value : FixedArray[UInt]) = "moon_bindgen_lz4_stream_t_internal_hash_table_set"
+
+///|
+pub fn Lz4StreamTInternal::set_hash_table(self : Lz4StreamTInternal, value : FixedArray[UInt]) -> Unit {
+  if value.length() != 4096 { abort("value must contain exactly 4096 elements") }
+  moon_bindgen_lz4_stream_t_internal_hash_table_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_get(object : Lz4StreamTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_t_internal_dictionary_get"
+
+///|
+pub fn Lz4StreamTInternal::get_dictionary(self : Lz4StreamTInternal) -> Ref[Byte] {
+  moon_bindgen_lz4_stream_t_internal_dictionary_get(self)
+}
+
+#borrow(object, value)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_set(object : Lz4StreamTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_t_internal_dictionary_set"
+
+///|
+pub fn Lz4StreamTInternal::set_dictionary(self : Lz4StreamTInternal, value : Ref[Byte]) -> Unit {
+  moon_bindgen_lz4_stream_t_internal_dictionary_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_get(object : Lz4StreamTInternal) -> Lz4StreamTInternal = "moon_bindgen_lz4_stream_t_internal_dict_ctx_get"
+
+///|
+pub fn Lz4StreamTInternal::get_dict_ctx(self : Lz4StreamTInternal) -> Lz4StreamTInternal {
+  moon_bindgen_lz4_stream_t_internal_dict_ctx_get(self)
+}
+
+#borrow(object, value)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_set(object : Lz4StreamTInternal, value : Lz4StreamTInternal) = "moon_bindgen_lz4_stream_t_internal_dict_ctx_set"
+
+///|
+pub fn Lz4StreamTInternal::set_dict_ctx(self : Lz4StreamTInternal, value : Lz4StreamTInternal) -> Unit {
+  moon_bindgen_lz4_stream_t_internal_dict_ctx_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_current_offset_get(object : Lz4StreamTInternal) -> UInt = "moon_bindgen_lz4_stream_t_internal_current_offset_get"
+
+///|
+pub fn Lz4StreamTInternal::get_current_offset(self : Lz4StreamTInternal) -> UInt {
+  moon_bindgen_lz4_stream_t_internal_current_offset_get(self)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_current_offset_set(object : Lz4StreamTInternal, value : UInt) = "moon_bindgen_lz4_stream_t_internal_current_offset_set"
+
+///|
+pub fn Lz4StreamTInternal::set_current_offset(self : Lz4StreamTInternal, value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_t_internal_current_offset_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_table_type_get(object : Lz4StreamTInternal) -> UInt = "moon_bindgen_lz4_stream_t_internal_table_type_get"
+
+///|
+pub fn Lz4StreamTInternal::get_table_type(self : Lz4StreamTInternal) -> UInt {
+  moon_bindgen_lz4_stream_t_internal_table_type_get(self)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_table_type_set(object : Lz4StreamTInternal, value : UInt) = "moon_bindgen_lz4_stream_t_internal_table_type_set"
+
+///|
+pub fn Lz4StreamTInternal::set_table_type(self : Lz4StreamTInternal, value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_t_internal_table_type_set(self, value)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_size_get(object : Lz4StreamTInternal) -> UInt = "moon_bindgen_lz4_stream_t_internal_dict_size_get"
+
+///|
+pub fn Lz4StreamTInternal::get_dict_size(self : Lz4StreamTInternal) -> UInt {
+  moon_bindgen_lz4_stream_t_internal_dict_size_get(self)
+}
+
+#borrow(object)
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_size_set(object : Lz4StreamTInternal, value : UInt) = "moon_bindgen_lz4_stream_t_internal_dict_size_set"
+
+///|
+pub fn Lz4StreamTInternal::set_dict_size(self : Lz4StreamTInternal, value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_t_internal_dict_size_set(self, value)
+}

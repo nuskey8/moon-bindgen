@@ -5,21 +5,26 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef struct moon_bindgen_c_TestPoint {
+typedef struct moon_bindgen_c_TestContext moon_bindgen_c_TestContext;
+typedef struct moon_bindgen_c_TestLine moon_bindgen_c_TestLine;
+typedef struct moon_bindgen_c_TestPoint moon_bindgen_c_TestPoint;
+typedef struct moon_bindgen_c_TestSlice moon_bindgen_c_TestSlice;
+
+struct moon_bindgen_c_TestPoint {
   int32_t x;
   int32_t y;
   uint8_t rgba[4];
-} moon_bindgen_c_TestPoint;
+};
 
-typedef struct moon_bindgen_c_TestLine {
+struct moon_bindgen_c_TestLine {
   moon_bindgen_c_TestPoint start;
   moon_bindgen_c_TestPoint end;
-} moon_bindgen_c_TestLine;
+};
 
-typedef struct moon_bindgen_c_TestSlice {
+struct moon_bindgen_c_TestSlice {
   const uint8_t * data;
   uint64_t len;
-} moon_bindgen_c_TestSlice;
+};
 
 MOONBIT_FFI_EXPORT
 int32_t moon_bindgen_get_test_line_start_x(moonbit_bytes_t value) {
