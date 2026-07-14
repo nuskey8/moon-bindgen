@@ -470,7 +470,7 @@ pub extern "c" fn lz4_sizeof_state() -> Int = "LZ4_sizeofState"
 pub extern "c" fn lz4_sizeof_stream_state() -> Int = "LZ4_sizeofStreamState"
 
 #borrow(state)
-pub extern "c" fn lz4_slide_input_buffer(state : RawPtr) -> Bytes = "LZ4_slideInputBuffer"
+pub extern "c" fn lz4_slide_input_buffer(state : RawPtr) -> Bytes? = "LZ4_slideInputBuffer"
 
 #borrow(source, dest)
 pub extern "c" fn lz4_uncompress(source : Bytes, dest : Bytes, output_size : Int) -> Int = "LZ4_uncompress"
@@ -480,4 +480,4 @@ pub extern "c" fn lz4_uncompress_unknown_output_size(source : Bytes, dest : Byte
 
 pub extern "c" fn lz4_version_number() -> Int = "LZ4_versionNumber"
 
-pub extern "c" fn lz4_version_string() -> Bytes = "LZ4_versionString"
+pub extern "c" fn lz4_version_string() -> Bytes? = "LZ4_versionString"
