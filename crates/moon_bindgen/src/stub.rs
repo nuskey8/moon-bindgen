@@ -185,7 +185,7 @@ fn emit_constructor(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut St
                 param.clone(),
                 moon_ty.clone(),
                 is_array,
-                Some(Ownership::Borrowed),
+                Some(Ownership::Borrow),
             ));
         }
         if let Type::Array { len: Some(len), .. } = resolve_alias(&leaf.ty, ctx.model) {
@@ -582,7 +582,7 @@ fn construct_struct(
 fn emit_annotations(out: &mut String, params: &[(String, String, bool, Option<Ownership>)]) {
     let borrowed = params
         .iter()
-        .filter(|(_, _, array, ownership)| *array || *ownership == Some(Ownership::Borrowed))
+        .filter(|(_, _, array, ownership)| *array || *ownership == Some(Ownership::Borrow))
         .map(|(name, _, _, _)| name.as_str())
         .collect::<Vec<_>>();
     if !borrowed.is_empty() {
