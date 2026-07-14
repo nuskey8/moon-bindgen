@@ -171,6 +171,8 @@ moon_bindgen::Builder::default()
 
 MoonBit's standard structs and C ABI structs do not share the same memory layout. For functions that accept or return a `#[repr(C)] struct` by value, `moon-bindgen` generates a C stub for ABI conversion.
 
+Complete `#[repr(C)]` structs whose fields can all be marshalled also receive a generated `Type::new(...)` constructor and `get_<field>()` / `set_<field>()` methods.
+
 ```rust
 let bindings = moon_bindgen::Builder::default()
     .input_bindgen_file("src/ffi.rs")
