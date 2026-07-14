@@ -112,7 +112,7 @@ moon_bindgen::Builder::default()
 
 ## Nullability
 
-ポインタのnullabilityを`moonbit_nullability_resolver()`で変更できます。デフォルトでは戻り値のみが`Ref[T]?`で扱われます。
+ポインタのnullabilityを`moonbit_nullability_resolver()`で変更できます。デフォルトでは戻り値のみがnullableで扱われます。
 
 ```rust
 moon_bindgen::Builder::default()
@@ -154,7 +154,8 @@ moon_bindgen::Builder::default()
 | `*const u8`, `*mut u8`             | `Bytes`                    |
 | `*const c_void`, `*mut c_void`     | `RawPtr`                   |
 | `*const T`, `*mut T`               | `Ref[T]`, `#external` type |
-| 関数ポインタ                       | `FuncRef`                  |
+| `extern "C" fn(...)`               | `FuncRef`                  |
+| `Option<extern "C" fn(...)>`       | `FuncRef?`                 |
 | `#[repr(C)] struct`の値渡し        | MoonBit `struct` + C stub  |
 
 ### C stub
