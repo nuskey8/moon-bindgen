@@ -1021,6 +1021,18 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
             b.c_stub_source()
                 .contains("void *moon_bindgen_point_new(int32_t x, int32_t y)")
         );
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::get_x(self : Point) -> Int")
+        );
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::set_y(self : Point, value : Int) -> Unit")
+        );
+        assert!(
+            b.c_stub_source()
+                .contains("int32_t moon_bindgen_point_x_get(void *self)")
+        );
         assert!(b.moonbit_source().contains("#borrow(p)"));
         assert!(
             b.moonbit_source()

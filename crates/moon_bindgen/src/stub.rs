@@ -160,7 +160,7 @@ fn emit_constructor(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut St
     let mut c_params = Vec::new();
     let mut assignments = String::new();
 
-    for leaf in leaves {
+    for leaf in &leaves {
         let param = value_name(&leaf.path.join("_"));
         let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
         let is_array = matches!(resolve_alias(&leaf.ty, ctx.model), Type::Array { .. });
@@ -215,6 +215,82 @@ fn emit_constructor(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut St
     c.push_str(&format!(
         "MOONBIT_FFI_EXPORT\nvoid *{symbol}({}) {{\n  moon_bindgen_c_{name} *value = (moon_bindgen_c_{name} *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_c_{name}));\n{assignments}  return value;\n}}\n\n",
         c_params.join(", ")
+    ));
+
+    for leaf in &leaves {
+        emit_field_accessors(name, &ty, leaf, ctx, moon, c);
+    }
+}
+
+fn emit_field_accessors(
+    struct_name: &str,
+    struct_ty: &str,
+    leaf: &Leaf,
+    ctx: &Context<'_>,
+    moon: &mut String,
+    c: &mut String,
+) {
+    let field = value_name(&leaf.path.join("_"));
+    let field_expr = leaf.path.join(".");
+    let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
+    let prefix = format!("moon_bindgen_{}_{}", struct_name.to_snake_case(), field);
+    let getter = format!("{prefix}_get");
+    let setter = format!("{prefix}_set");
+
+    if let Type::Array {
+        inner,
+        len: Some(len),
+    } = resolve_alias(&leaf.ty, ctx.model)
+    {
+        let initial = default_value(inner, ctx.model).unwrap();
+        moon.push_str(&format!(
+            "#borrow(object, out)\nextern \"c\" fn {getter}(object : {struct_ty}, out : {moon_ty}) = \"{getter}\"\n\n"
+        ));
+        moon.push_str(&format!(
+            "///|\n{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  let out = FixedArray::make({len}, {initial})\n  {getter}(self, out)\n  out\n}}\n\n",
+            ctx.visibility.prefix()
+        ));
+        moon.push_str(&format!(
+            "#borrow(object, value)\nextern \"c\" fn {setter}(object : {struct_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
+        ));
+        moon.push_str(&format!(
+            "///|\n{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  if value.length() != {len} {{ abort(\"value must contain exactly {len} elements\") }}\n  {setter}(self, value)\n}}\n\n",
+            ctx.visibility.prefix()
+        ));
+        c.push_str(&format!(
+            "MOONBIT_FFI_EXPORT\nvoid {getter}(void *self, void *out) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  memcpy(out, value->{field_expr}, sizeof(value->{field_expr}));\n}}\n\n"
+        ));
+        c.push_str(&format!(
+            "MOONBIT_FFI_EXPORT\nvoid {setter}(void *self, void *field) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  memcpy(value->{field_expr}, field, sizeof(value->{field_expr}));\n}}\n\n"
+        ));
+        return;
+    }
+
+    moon.push_str(&format!(
+        "#borrow(object)\nextern \"c\" fn {getter}(object : {struct_ty}) -> {moon_ty} = \"{getter}\"\n\n"
+    ));
+    moon.push_str(&format!(
+        "///|\n{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  {getter}(self)\n}}\n\n",
+        ctx.visibility.prefix()
+    ));
+    let setter_borrow = if needs_ownership(&leaf.ty) {
+        "#borrow(object, value)"
+    } else {
+        "#borrow(object)"
+    };
+    moon.push_str(&format!(
+        "{setter_borrow}\nextern \"c\" fn {setter}(object : {struct_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
+    ));
+    moon.push_str(&format!(
+        "///|\n{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  {setter}(self, value)\n}}\n\n",
+        ctx.visibility.prefix()
+    ));
+    let c_ty = c_abi_type(&leaf.ty, ctx.model).unwrap();
+    c.push_str(&format!(
+        "MOONBIT_FFI_EXPORT\n{c_ty} {getter}(void *self) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  return value->{field_expr};\n}}\n\n"
+    ));
+    c.push_str(&format!(
+        "MOONBIT_FFI_EXPORT\nvoid {setter}(void *self, {c_ty} field) {{\n  moon_bindgen_c_{struct_name} *value = (moon_bindgen_c_{struct_name} *)self;\n  value->{field_expr} = field;\n}}\n\n"
     ));
 }
 
