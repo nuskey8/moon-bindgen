@@ -38,29 +38,6 @@ pub(crate) fn render(
     }
     out.push('\n');
     out.push_str(&stub.moonbit_types);
-    for (name, ty) in &model.aliases {
-        if contains_nullable_callback(ty) {
-            diagnostics.push(warning(
-                name,
-                "nullable callback is emitted as FuncRef; use a C adapter if null is possible",
-            ));
-        }
-    }
-    for f in model.functions.values() {
-        if !function_filter(f.rust_name.clone()) {
-            continue;
-        }
-        if f.params
-            .iter()
-            .any(|(_, ty)| contains_nullable_callback(ty))
-            || contains_nullable_callback(&f.result)
-        {
-            diagnostics.push(warning(
-                &f.rust_name,
-                "nullable callback is emitted as FuncRef; use a C adapter if null is possible",
-            ));
-        }
-    }
     let mut opaque = BTreeSet::new();
     for f in model.functions.values() {
         if !function_filter(f.rust_name.clone()) {
@@ -213,6 +190,7 @@ pub(crate) fn render(
             emit_nullable_function(
                 &mut out,
                 f,
+                model,
                 visibility,
                 ownership_resolver,
                 nullability_resolver,
@@ -224,9 +202,19 @@ pub(crate) fn render(
         let params: Option<Vec<_>> = f
             .params
             .iter()
-            .map(|(n, t)| moon_type(t, type_rename).map(|ty| (n, ty, needs_ownership(t))))
+            .map(|(n, t)| {
+                moon_parameter_type(t, model, &f.rust_name, n, nullability_resolver, type_rename)
+                    .map(|ty| (n, ty, needs_ownership_resolved(t, model)))
+            })
             .collect();
-        let (Some(params), Some(result)) = (params, moon_type(&f.result, type_rename)) else {
+        let result = moon_result_type(
+            &f.result,
+            model,
+            &f.rust_name,
+            nullability_resolver,
+            type_rename,
+        );
+        let (Some(params), Some(result)) = (params, result) else {
             diagnostics.push(warning(
                 &f.rust_name,
                 "signature contains an unsupported type",
@@ -414,6 +402,7 @@ fn emit_nullable_external_helpers(
 fn emit_nullable_function(
     out: &mut String,
     function: &crate::model::Function,
+    model: &Model,
     visibility: Visibility,
     ownership_resolver: &dyn Fn(&str, &str) -> Ownership,
     nullability_resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
@@ -424,7 +413,15 @@ fn emit_nullable_function(
         .params
         .iter()
         .map(|(name, ty)| {
-            let raw_ty = moon_type(ty, type_rename).expect("validated direct FFI type");
+            let raw_ty = moon_parameter_type(
+                ty,
+                model,
+                &function.rust_name,
+                name,
+                nullability_resolver,
+                type_rename,
+            )
+            .expect("validated direct FFI type");
             let nullable = external_pointer_type(ty, type_rename).is_some()
                 && effective_nullability(
                     nullability_resolver,
@@ -434,7 +431,14 @@ fn emit_nullable_function(
             (name, ty, raw_ty, nullable)
         })
         .collect::<Vec<_>>();
-    let raw_result = moon_type(&function.result, type_rename).expect("validated direct FFI type");
+    let raw_result = moon_result_type(
+        &function.result,
+        model,
+        &function.rust_name,
+        nullability_resolver,
+        type_rename,
+    )
+    .expect("validated direct FFI type");
     let nullable_result = external_pointer_type(&function.result, type_rename).is_some()
         && effective_nullability(
             nullability_resolver,
@@ -670,7 +674,7 @@ fn moon_type(ty: &Type, type_rename: fn(String) -> String) -> Option<String> {
             params,
             result,
             variadic,
-            ..
+            nullable,
         } => {
             if *variadic {
                 return None;
@@ -680,16 +684,27 @@ fn moon_type(ty: &Type, type_rename: fn(String) -> String) -> Option<String> {
                 .map(|ty| moon_type(ty, type_rename))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
-            Some(format!(
-                "FuncRef[({params}) -> {}]",
-                moon_type(result, type_rename)?
-            ))
+            let ty = format!("FuncRef[({params}) -> {}]", moon_type(result, type_rename)?);
+            Some(if *nullable { format!("{ty}?") } else { ty })
         }
         Type::Unsupported => None,
     }
 }
 fn needs_ownership(t: &Type) -> bool {
-    matches!(t, Type::Pointer { .. } | Type::Array { .. })
+    matches!(
+        t,
+        Type::Pointer { .. } | Type::Array { .. } | Type::FunctionPointer { .. }
+    )
+}
+
+fn needs_ownership_resolved(t: &Type, model: &Model) -> bool {
+    match t {
+        Type::Path(path) => model
+            .aliases
+            .get(path.rsplit("::").next().unwrap_or(path))
+            .is_some_and(|alias| needs_ownership_resolved(alias, model)),
+        _ => needs_ownership(t),
+    }
 }
 
 fn is_direct_ffi_type(ty: &Type, model: &Model) -> bool {
@@ -741,13 +756,67 @@ fn is_pointer_pointee(ty: &Type, model: &Model) -> bool {
         Type::Unit | Type::Array { .. } | Type::Unsupported => false,
     }
 }
-fn contains_nullable_callback(t: &Type) -> bool {
-    match t {
-        Type::FunctionPointer { nullable, .. } => *nullable,
-        Type::Pointer { inner, .. } | Type::Array { inner, .. } => {
-            contains_nullable_callback(inner)
+fn moon_parameter_type(
+    ty: &Type,
+    model: &Model,
+    function: &str,
+    parameter: &str,
+    resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
+    type_rename: fn(String) -> String,
+) -> Option<String> {
+    let rendered = moon_type(ty, type_rename)?;
+    if effective_nullability(
+        resolver,
+        function,
+        NullabilityPosition::Parameter(parameter.to_owned()),
+    ) == Nullability::Nullable
+        && is_bytes_pointer(ty, model)
+    {
+        Some(format!("{rendered}?"))
+    } else {
+        Some(rendered)
+    }
+}
+
+fn moon_result_type(
+    ty: &Type,
+    model: &Model,
+    function: &str,
+    resolver: &dyn Fn(&str, NullabilityPosition) -> Nullability,
+    type_rename: fn(String) -> String,
+) -> Option<String> {
+    let rendered = moon_type(ty, type_rename)?;
+    if effective_nullability(resolver, function, NullabilityPosition::Return)
+        == Nullability::Nullable
+        && is_bytes_pointer(ty, model)
+    {
+        Some(format!("{rendered}?"))
+    } else {
+        Some(rendered)
+    }
+}
+
+fn is_bytes_pointer(ty: &Type, model: &Model) -> bool {
+    let Type::Pointer { inner, .. } = ty else {
+        return false;
+    };
+    let mut inner = inner.as_ref();
+    let mut seen = BTreeSet::new();
+    loop {
+        let Type::Path(path) = inner else {
+            return false;
+        };
+        let name = path.rsplit("::").next().unwrap_or(path);
+        if matches!(name, "c_char" | "i8" | "u8") {
+            return true;
         }
-        _ => false,
+        if !seen.insert(name) {
+            return false;
+        }
+        let Some(alias) = model.aliases.get(name) else {
+            return false;
+        };
+        inner = alias;
     }
 }
 fn collect_opaque(t: &Type, model: &Model, out: &mut BTreeSet<String>) {
@@ -986,8 +1055,9 @@ unsafe extern "C" {
         );
         assert!(
             b.moonbit_source()
-                .contains("type Compare = FuncRef[(Int, Int) -> Int]")
+                .contains("type Compare = FuncRef[(Int, Int) -> Int]?")
         );
+        assert!(b.moonbit_source().contains("#borrow(compare)"));
         assert!(
             b.moonbit_source()
                 .contains("fn sort_items(compare : Compare)")
@@ -996,11 +1066,45 @@ unsafe extern "C" {
             b.moonbit_source()
                 .contains("fn get_callback() -> FuncRef[(UInt64) -> Unit]")
         );
-        assert!(
-            b.diagnostics()
-                .iter()
-                .any(|d| d.message.contains("nullable callback"))
+        assert!(b.diagnostics().is_empty());
+    }
+
+    #[test]
+    fn emits_nullable_bytes_parameters_directly() {
+        let f = syn::parse_file(
+            r#"unsafe extern "C" {
+                pub fn connect(server_name: *const ::std::os::raw::c_char, id: *const u8);
+                pub fn optional_data() -> *const u8;
+            }"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Private,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrowed,
+            &|function, position| match (function, position) {
+                ("connect", NullabilityPosition::Parameter(name)) if name == "server_name" => {
+                    Nullability::Nullable
+                }
+                _ => Nullability::Unspecified,
+            },
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
         );
+        assert!(
+            b.moonbit_source()
+                .contains("fn connect(server_name : Bytes?, id : Bytes)")
+        );
+        assert!(b.moonbit_source().contains("#borrow(server_name, id)"));
+        assert!(b.moonbit_source().contains("fn optional_data() -> Bytes?"));
     }
 
     #[test]
