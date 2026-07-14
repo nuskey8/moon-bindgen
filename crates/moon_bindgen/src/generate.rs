@@ -1013,6 +1013,14 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
             default_constant_rename,
         );
         assert!(b.moonbit_source().contains("#external\ntype Point"));
+        assert!(
+            b.moonbit_source()
+                .contains("fn Point::new(x : Int, y : Int) -> Point")
+        );
+        assert!(
+            b.c_stub_source()
+                .contains("void *moon_bindgen_point_new(int32_t x, int32_t y)")
+        );
         assert!(b.moonbit_source().contains("#borrow(p)"));
         assert!(
             b.moonbit_source()
