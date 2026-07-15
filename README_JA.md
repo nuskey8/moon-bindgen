@@ -130,33 +130,38 @@ moon_bindgen::Builder::default()
 
 ## 型のマーシャリング
 
-| Rust                               | MoonBit                    |
-| ---------------------------------- | -------------------------- |
-| `()`                               | `Unit`                     |
-| `i8`, `u8`                         | `Byte`                     |
-| `i16`, `u16`, `i32`                | `Int`                      |
-| `u32`                              | `UInt`                     |
-| `i64`, `isize`                     | `Int64`                    |
-| `u64`, `usize`                     | `UInt64`                   |
-| `f32`                              | `Float`                    |
-| `f64`                              | `Double`                   |
-| `bool`                             | `Bool`                     |
-| `c_char`, `c_schar`, `c_uchar`     | `Byte`                     |
-| `c_short`, `c_ushort`, `c_int`     | `Int`                      |
-| `c_uint`                           | `UInt`                     |
-| `c_long`, `c_longlong`             | `Int64`                    |
-| `c_ulong`, `c_ulonglong`, `size_t` | `UInt64`                   |
-| `c_float`                          | `Float`                    |
-| `c_double`                         | `Double`                   |
-| `c_void`                           | `Unit`                     |
-| `*const c_char`, `*mut c_char`     | `Bytes`                    |
-| `*const i8`, `*mut i8`             | `Bytes`                    |
-| `*const u8`, `*mut u8`             | `Bytes`                    |
-| `*const c_void`, `*mut c_void`     | `RawPtr`                   |
-| `*const T`, `*mut T`               | `Ref[T]`, `#external` type |
-| `extern "C" fn(...)`               | `FuncRef`                  |
-| `Option<extern "C" fn(...)>`       | `FuncRef?`                 |
-| `#[repr(C)] struct`の値渡し        | MoonBit `struct` + C stub  |
+| Rust                                      | MoonBit                    |
+| ----------------------------------------- | -------------------------- |
+| `()`                                      | `Unit`                     |
+| `i8`, `u8`                                | `Byte`                     |
+| `i16`, `u16`, `i32`                       | `Int`                      |
+| `u32`                                     | `UInt`                     |
+| `i64`, `isize`                            | `Int64`                    |
+| `u64`, `usize`                            | `UInt64`                   |
+| `f32`                                     | `Float`                    |
+| `f64`                                     | `Double`                   |
+| `bool`                                    | `Bool`                     |
+| `c_char`, `c_schar`, `c_uchar`            | `Byte`                     |
+| `c_short`, `c_ushort`, `c_int`            | `Int`                      |
+| `c_uint`                                  | `UInt`                     |
+| `c_long`, `c_longlong`                    | `Int64`                    |
+| `c_ulong`, `c_ulonglong`, `size_t`        | `UInt64`                   |
+| `c_float`                                 | `Float`                    |
+| `c_double`                                | `Double`                   |
+| `c_void`                                  | `Unit`                     |
+| `*const c_char`, `*const i8`, `*const u8` | `ConstPtr[Byte]` / `Bytes` |
+| `*mut c_char`, `*mut i8`, `*mut u8`       | `Ptr[Byte]` / `Bytes`      |
+| `*mut *const T`                           | `Ref[ConstPtr[T]]`         |
+| `*mut *mut T`                             | `Ref[Ptr[T]]`              |
+| `*const c_void`, `*mut c_void`            | `RawPtr`                   |
+| `*const T`, `*mut T`                      | `Ref[T]`, `#external` type |
+| `extern "C" fn(...)`                      | `FuncRef`                  |
+| `Option<extern "C" fn(...)>`              | `FuncRef?`                 |
+| `#[repr(C)] struct`の値渡し               | MoonBit `struct` + C stub  |
+
+`byte`ポインタはデフォルトで`Bytes`に特殊化されます。`moonbit_use_bytes(false)`を指定すると`Ptr[Byte]`または`ConstPtr[Byte]`として保持します。
+
+多重ポインタは`Ptr[T]` / `ConstPtr[T]`で階層を保持します。
 
 ### C stub
 

@@ -21,6 +21,11 @@ pub type Lz4StreamTInternal // #[repr(C)] struct
 #external
 pub type Lz4StreamU // C union
 
+extern "c" fn moon_bindgen_ptr_int_new(initial : Int) -> Ptr[Int] = "moon_bindgen_ptr_int_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_int_get(slot : Ptr[Int]) -> Int = "moon_bindgen_ptr_int_get"
+
 ///|
 extern "c" fn moon_bindgen_lz4_stream_decode_t_null() -> Lz4StreamDecodeT = "moon_bindgen_lz4_stream_decode_t_null"
 
@@ -333,7 +338,15 @@ pub extern "c" fn lz4_compress_continue(lz4_stream_ptr : Lz4StreamT, source : By
 pub extern "c" fn lz4_compress_default(src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int) -> Int = "LZ4_compress_default"
 
 #borrow(src, dst, src_size_ptr)
-pub extern "c" fn lz4_compress_dest_size(src : Bytes, dst : Bytes, src_size_ptr : Ref[Int], target_dst_size : Int) -> Int = "LZ4_compress_destSize"
+extern "c" fn moon_bindgen_lz4_compress_dest_size_pointer_out(src : Bytes, dst : Bytes, src_size_ptr : Ptr[Int], target_dst_size : Int) -> Int = "moon_bindgen_lz4_compress_dest_size_pointer_out"
+
+///|
+pub fn lz4_compress_dest_size(src : Bytes, dst : Bytes, src_size_ptr : Ref[Int], target_dst_size : Int) -> Int {
+  let src_size_ptr_slot = moon_bindgen_ptr_int_new(src_size_ptr.val)
+  let result = moon_bindgen_lz4_compress_dest_size_pointer_out(src, dst, src_size_ptr_slot, target_dst_size)
+  src_size_ptr.val = moon_bindgen_ptr_int_get(src_size_ptr_slot)
+  result
+}
 
 #borrow(src, dst)
 pub extern "c" fn lz4_compress_fast(src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast"

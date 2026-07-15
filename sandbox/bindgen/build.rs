@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     moon_bindgen::Builder::default()
         .input_extern_file("src/lib.rs")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
+        .moonbit_emit_pointer_types(false)
         .generate()?
         .write_moonbit_to_file("../my_add_ffi.mbt")?;
 
@@ -39,6 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .moonbit_file_header("// Source: LZ4 1.10.0 (BSD-2-Clause)")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
         .moonbit_ownership_resolver(|_, _| moon_bindgen::Ownership::Borrow)
+        .moonbit_emit_pointer_types(false)
         .generate()?
         .write_to_file(moonbit_bindings, manifest_dir.join("../lz4_ffi_stub.c"))?;
 

@@ -45,21 +45,34 @@ test "external pointer return is nullable by default" {
 
 ///|
 test "double pointer to an external context" {
-  let context = test_context_ptr()
+  let context = Ref(moon_bindgen_ptr_testcontext_null())
   test_context_create(context)
-  assert_eq(test_context_value(context.deref()), 1234)
+  assert_eq(test_context_value(moon_bindgen_ptr_testcontext_deref(context.val)), 1234)
 }
 
 ///|
 test "triple pointer updates the deepest external context" {
-  let context = test_context_ptr_ptr()
+  let context = Ref(test_context_ptr())
   test_context_pointer_pointer(context)
-  assert_eq(test_context_value(context.deref().deref()), 1234)
+  let inner = moon_bindgen_ptr_ptr_testcontext_deref(context.val)
+  assert_eq(test_context_value(moon_bindgen_ptr_testcontext_deref(inner)), 1234)
 }
 
 ///|
 test "double pointer to a primitive" {
-  let value = Ref(Ref(0))
+  let value = Ref(moon_bindgen_ptr_int_null())
   test_int_pointer(value)
-  assert_eq(value.val.val, 42)
+  assert_eq(moon_bindgen_ptr_int_read(value.val), 42)
+}
+
+///|
+test "double pointer to borrowed bytes" {
+  let pointer = Ref(moon_bindgen_constptr_byte_null())
+  let length = Ref(0UL)
+  test_byte_pointer(pointer, length)
+  assert_eq(length.val, 4UL)
+  assert_eq(
+    moon_bindgen_constptr_byte_copy_bytes(pointer.val, length.val),
+    b"\x01\x02\x03\x04",
+  )
 }

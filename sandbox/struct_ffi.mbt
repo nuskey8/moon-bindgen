@@ -36,33 +36,121 @@ pub fn TestSlice::new(data : Bytes, len : UInt64) -> TestSlice {
 
 ///|
 #external
+pub type Ptr[T] // mutable C pointer
+
+///|
+#external
+pub type ConstPtr[T] // const C pointer
+
+///|
+#external
 pub type TestContext // #[repr(C)] struct
 
 ///|
-#external
-pub type TestContextPtr // pointer to TestContext
+pub extern "c" fn moon_bindgen_constptr_byte_null() -> ConstPtr[Byte] = "moon_bindgen_constptr_byte_null"
 
 ///|
 #borrow(value)
-extern "c" fn moon_bindgen_test_context_ptr_deref(value : TestContextPtr) -> TestContext = "moon_bindgen_test_context_ptr_deref"
+pub extern "c" fn moon_bindgen_constptr_byte_is_null(value : ConstPtr[Byte]) -> Bool = "moon_bindgen_constptr_byte_is_null"
 
 ///|
-pub fn TestContextPtr::deref(self : TestContextPtr) -> TestContext {
-  moon_bindgen_test_context_ptr_deref(self)
-}
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_constptr_byte_copy_bytes(pointer : ConstPtr[Byte], length : UInt64) -> Bytes = "moon_bindgen_constptr_byte_copy_bytes"
 
 ///|
-#external
-pub type TestContextPtrPtr // pointer to TestContextPtr
+pub extern "c" fn moon_bindgen_ptr_constptr_byte_null() -> Ptr[ConstPtr[Byte]] = "moon_bindgen_ptr_constptr_byte_null"
 
 ///|
 #borrow(value)
-extern "c" fn moon_bindgen_test_context_ptr_ptr_deref(value : TestContextPtrPtr) -> TestContextPtr = "moon_bindgen_test_context_ptr_ptr_deref"
+pub extern "c" fn moon_bindgen_ptr_constptr_byte_is_null(value : Ptr[ConstPtr[Byte]]) -> Bool = "moon_bindgen_ptr_constptr_byte_is_null"
 
 ///|
-pub fn TestContextPtrPtr::deref(self : TestContextPtrPtr) -> TestContextPtr {
-  moon_bindgen_test_context_ptr_ptr_deref(self)
-}
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_constptr_byte_deref(pointer : Ptr[ConstPtr[Byte]]) -> ConstPtr[Byte] = "moon_bindgen_ptr_constptr_byte_deref"
+
+///|
+pub extern "c" fn moon_bindgen_ptr_int_null() -> Ptr[Int] = "moon_bindgen_ptr_int_null"
+
+///|
+#borrow(value)
+pub extern "c" fn moon_bindgen_ptr_int_is_null(value : Ptr[Int]) -> Bool = "moon_bindgen_ptr_int_is_null"
+
+///|
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_int_read(pointer : Ptr[Int]) -> Int = "moon_bindgen_ptr_int_read"
+
+///|
+pub extern "c" fn moon_bindgen_ptr_ptr_int_null() -> Ptr[Ptr[Int]] = "moon_bindgen_ptr_ptr_int_null"
+
+///|
+#borrow(value)
+pub extern "c" fn moon_bindgen_ptr_ptr_int_is_null(value : Ptr[Ptr[Int]]) -> Bool = "moon_bindgen_ptr_ptr_int_is_null"
+
+///|
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_ptr_int_deref(pointer : Ptr[Ptr[Int]]) -> Ptr[Int] = "moon_bindgen_ptr_ptr_int_deref"
+
+///|
+pub extern "c" fn moon_bindgen_ptr_ptr_ptr_testcontext_null() -> Ptr[Ptr[Ptr[TestContext]]] = "moon_bindgen_ptr_ptr_ptr_testcontext_null"
+
+///|
+#borrow(value)
+pub extern "c" fn moon_bindgen_ptr_ptr_ptr_testcontext_is_null(value : Ptr[Ptr[Ptr[TestContext]]]) -> Bool = "moon_bindgen_ptr_ptr_ptr_testcontext_is_null"
+
+///|
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_ptr_ptr_testcontext_deref(pointer : Ptr[Ptr[Ptr[TestContext]]]) -> Ptr[Ptr[TestContext]] = "moon_bindgen_ptr_ptr_ptr_testcontext_deref"
+
+///|
+pub extern "c" fn moon_bindgen_ptr_ptr_testcontext_null() -> Ptr[Ptr[TestContext]] = "moon_bindgen_ptr_ptr_testcontext_null"
+
+///|
+#borrow(value)
+pub extern "c" fn moon_bindgen_ptr_ptr_testcontext_is_null(value : Ptr[Ptr[TestContext]]) -> Bool = "moon_bindgen_ptr_ptr_testcontext_is_null"
+
+///|
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_ptr_testcontext_deref(pointer : Ptr[Ptr[TestContext]]) -> Ptr[TestContext] = "moon_bindgen_ptr_ptr_testcontext_deref"
+
+///|
+pub extern "c" fn moon_bindgen_ptr_testcontext_null() -> Ptr[TestContext] = "moon_bindgen_ptr_testcontext_null"
+
+///|
+#borrow(value)
+pub extern "c" fn moon_bindgen_ptr_testcontext_is_null(value : Ptr[TestContext]) -> Bool = "moon_bindgen_ptr_testcontext_is_null"
+
+///|
+#borrow(pointer)
+pub extern "c" fn moon_bindgen_ptr_testcontext_deref(pointer : Ptr[TestContext]) -> TestContext = "moon_bindgen_ptr_testcontext_deref"
+
+#borrow(initial)
+extern "c" fn moon_bindgen_ptr_constptr_byte_new(initial : ConstPtr[Byte]) -> Ptr[ConstPtr[Byte]] = "moon_bindgen_ptr_constptr_byte_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_constptr_byte_get(slot : Ptr[ConstPtr[Byte]]) -> ConstPtr[Byte] = "moon_bindgen_ptr_constptr_byte_get"
+
+#borrow(initial)
+extern "c" fn moon_bindgen_ptr_ptr_int_new(initial : Ptr[Int]) -> Ptr[Ptr[Int]] = "moon_bindgen_ptr_ptr_int_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_ptr_int_get(slot : Ptr[Ptr[Int]]) -> Ptr[Int] = "moon_bindgen_ptr_ptr_int_get"
+
+#borrow(initial)
+extern "c" fn moon_bindgen_ptr_ptr_ptr_testcontext_new(initial : Ptr[Ptr[TestContext]]) -> Ptr[Ptr[Ptr[TestContext]]] = "moon_bindgen_ptr_ptr_ptr_testcontext_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_ptr_ptr_testcontext_get(slot : Ptr[Ptr[Ptr[TestContext]]]) -> Ptr[Ptr[TestContext]] = "moon_bindgen_ptr_ptr_ptr_testcontext_get"
+
+#borrow(initial)
+extern "c" fn moon_bindgen_ptr_ptr_testcontext_new(initial : Ptr[TestContext]) -> Ptr[Ptr[TestContext]] = "moon_bindgen_ptr_ptr_testcontext_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_ptr_testcontext_get(slot : Ptr[Ptr[TestContext]]) -> Ptr[TestContext] = "moon_bindgen_ptr_ptr_testcontext_get"
+
+extern "c" fn moon_bindgen_ptr_uint64_new(initial : UInt64) -> Ptr[UInt64] = "moon_bindgen_ptr_uint64_new"
+
+#borrow(slot)
+extern "c" fn moon_bindgen_ptr_uint64_get(slot : Ptr[UInt64]) -> UInt64 = "moon_bindgen_ptr_uint64_get"
 
 ///|
 extern "c" fn moon_bindgen_test_context_null() -> TestContext = "moon_bindgen_test_context_null"
@@ -81,8 +169,27 @@ pub fn TestContext::is_null(self : TestContext) -> Bool {
   moon_bindgen_test_context_is_null(self)
 }
 
+#borrow(out, out_len)
+extern "c" fn moon_bindgen_test_byte_pointer_pointer_out(out : Ptr[ConstPtr[Byte]], out_len : Ptr[UInt64]) = "moon_bindgen_test_byte_pointer_pointer_out"
+
+///|
+pub fn test_byte_pointer(out : Ref[ConstPtr[Byte]], out_len : Ref[UInt64]) -> Unit {
+  let out_slot = moon_bindgen_ptr_constptr_byte_new(out.val)
+  let out_len_slot = moon_bindgen_ptr_uint64_new(out_len.val)
+  moon_bindgen_test_byte_pointer_pointer_out(out_slot, out_len_slot)
+  out.val = moon_bindgen_ptr_constptr_byte_get(out_slot)
+  out_len.val = moon_bindgen_ptr_uint64_get(out_len_slot)
+}
+
 #borrow(out)
-pub extern "c" fn test_context_create(out : TestContextPtr) = "test_context_create"
+extern "c" fn moon_bindgen_test_context_create_pointer_out(out : Ptr[Ptr[TestContext]]) = "moon_bindgen_test_context_create_pointer_out"
+
+///|
+pub fn test_context_create(out : Ref[Ptr[TestContext]]) -> Unit {
+  let out_slot = moon_bindgen_ptr_ptr_testcontext_new(out.val)
+  moon_bindgen_test_context_create_pointer_out(out_slot)
+  out.val = moon_bindgen_ptr_ptr_testcontext_get(out_slot)
+}
 
 extern "c" fn moon_bindgen_test_context_null_raw() -> TestContext = "test_context_null"
 
@@ -97,17 +204,31 @@ pub fn test_context_null() -> TestContext? {
 }
 
 #borrow(out)
-pub extern "c" fn test_context_pointer_pointer(out : TestContextPtrPtr) = "test_context_pointer_pointer"
+extern "c" fn moon_bindgen_test_context_pointer_pointer_pointer_out(out : Ptr[Ptr[Ptr[TestContext]]]) = "moon_bindgen_test_context_pointer_pointer_pointer_out"
 
-pub extern "c" fn test_context_ptr() -> TestContextPtr = "test_context_ptr"
+///|
+pub fn test_context_pointer_pointer(out : Ref[Ptr[Ptr[TestContext]]]) -> Unit {
+  let out_slot = moon_bindgen_ptr_ptr_ptr_testcontext_new(out.val)
+  moon_bindgen_test_context_pointer_pointer_pointer_out(out_slot)
+  out.val = moon_bindgen_ptr_ptr_ptr_testcontext_get(out_slot)
+}
 
-pub extern "c" fn test_context_ptr_ptr() -> TestContextPtrPtr = "test_context_ptr_ptr"
+pub extern "c" fn test_context_ptr() -> Ptr[Ptr[TestContext]] = "test_context_ptr"
+
+pub extern "c" fn test_context_ptr_ptr() -> Ptr[Ptr[Ptr[TestContext]]] = "test_context_ptr_ptr"
 
 #borrow(context)
 pub extern "c" fn test_context_value(context : TestContext) -> Int = "test_context_value"
 
 #borrow(out)
-pub extern "c" fn test_int_pointer(out : Ref[Ref[Int]]) = "test_int_pointer"
+extern "c" fn moon_bindgen_test_int_pointer_pointer_out(out : Ptr[Ptr[Int]]) = "moon_bindgen_test_int_pointer_pointer_out"
+
+///|
+pub fn test_int_pointer(out : Ref[Ptr[Int]]) -> Unit {
+  let out_slot = moon_bindgen_ptr_ptr_int_new(out.val)
+  moon_bindgen_test_int_pointer_pointer_out(out_slot)
+  out.val = moon_bindgen_ptr_ptr_int_get(out_slot)
+}
 
 ///|
 priv struct TestLineMoonBindgenRepr(Bytes)

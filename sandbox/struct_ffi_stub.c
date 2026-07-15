@@ -129,13 +129,140 @@ uint32_t moon_bindgen_test_slice_sum(moonbit_bytes_t slice_data, uint64_t slice_
 }
 
 MOONBIT_FFI_EXPORT
-void *moon_bindgen_test_context_ptr_deref(void *self) {
-  return *(void **)self;
+void *moon_bindgen_constptr_byte_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_constptr_byte_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+moonbit_bytes_t moon_bindgen_constptr_byte_copy_bytes(const uint8_t *pointer, uint64_t length) {
+  moonbit_bytes_t bytes = moonbit_make_bytes((int32_t)length, 0);
+  if (length != 0) memcpy(bytes, pointer, (size_t)length);
+  return bytes;
 }
 
 MOONBIT_FFI_EXPORT
-void *moon_bindgen_test_context_ptr_ptr_deref(void *self) {
-  return *(void **)self;
+void *moon_bindgen_ptr_constptr_byte_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_constptr_byte_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_constptr_byte_deref(void *pointer) { return *(void **)pointer; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_int_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_int_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_int_read(const int32_t *pointer) { return *pointer; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_int_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_ptr_int_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_int_deref(void *pointer) { return *(void **)pointer; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_ptr_testcontext_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_ptr_ptr_testcontext_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_ptr_testcontext_deref(void *pointer) { return *(void **)pointer; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_testcontext_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_ptr_testcontext_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_testcontext_deref(void *pointer) { return *(void **)pointer; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_testcontext_null(void) { return NULL; }
+
+MOONBIT_FFI_EXPORT
+int32_t moon_bindgen_ptr_testcontext_is_null(void *value) { return value == NULL; }
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_testcontext_deref(void *pointer) { return pointer; }
+
+typedef struct { const uint8_t * value; } moon_bindgen_ptr_constptr_byte_t;
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_constptr_byte_new(const uint8_t * initial) {
+  moon_bindgen_ptr_constptr_byte_t *slot = (moon_bindgen_ptr_constptr_byte_t *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_ptr_constptr_byte_t));
+  slot->value = initial;
+  return slot;
+}
+
+MOONBIT_FFI_EXPORT
+const uint8_t * moon_bindgen_ptr_constptr_byte_get(void *raw_slot) {
+  return ((moon_bindgen_ptr_constptr_byte_t *)raw_slot)->value;
+}
+
+typedef struct { int32_t * value; } moon_bindgen_ptr_ptr_int_t;
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_int_new(int32_t * initial) {
+  moon_bindgen_ptr_ptr_int_t *slot = (moon_bindgen_ptr_ptr_int_t *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_ptr_ptr_int_t));
+  slot->value = initial;
+  return slot;
+}
+
+MOONBIT_FFI_EXPORT
+int32_t * moon_bindgen_ptr_ptr_int_get(void *raw_slot) {
+  return ((moon_bindgen_ptr_ptr_int_t *)raw_slot)->value;
+}
+
+typedef struct { moon_bindgen_c_TestContext * * value; } moon_bindgen_ptr_ptr_ptr_testcontext_t;
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_ptr_testcontext_new(moon_bindgen_c_TestContext * * initial) {
+  moon_bindgen_ptr_ptr_ptr_testcontext_t *slot = (moon_bindgen_ptr_ptr_ptr_testcontext_t *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_ptr_ptr_ptr_testcontext_t));
+  slot->value = initial;
+  return slot;
+}
+
+MOONBIT_FFI_EXPORT
+moon_bindgen_c_TestContext * * moon_bindgen_ptr_ptr_ptr_testcontext_get(void *raw_slot) {
+  return ((moon_bindgen_ptr_ptr_ptr_testcontext_t *)raw_slot)->value;
+}
+
+typedef struct { moon_bindgen_c_TestContext * value; } moon_bindgen_ptr_ptr_testcontext_t;
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_ptr_testcontext_new(moon_bindgen_c_TestContext * initial) {
+  moon_bindgen_ptr_ptr_testcontext_t *slot = (moon_bindgen_ptr_ptr_testcontext_t *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_ptr_ptr_testcontext_t));
+  slot->value = initial;
+  return slot;
+}
+
+MOONBIT_FFI_EXPORT
+moon_bindgen_c_TestContext * moon_bindgen_ptr_ptr_testcontext_get(void *raw_slot) {
+  return ((moon_bindgen_ptr_ptr_testcontext_t *)raw_slot)->value;
+}
+
+typedef struct { uint64_t value; } moon_bindgen_ptr_uint64_t;
+
+MOONBIT_FFI_EXPORT
+void *moon_bindgen_ptr_uint64_new(uint64_t initial) {
+  moon_bindgen_ptr_uint64_t *slot = (moon_bindgen_ptr_uint64_t *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_ptr_uint64_t));
+  slot->value = initial;
+  return slot;
+}
+
+MOONBIT_FFI_EXPORT
+uint64_t moon_bindgen_ptr_uint64_get(void *raw_slot) {
+  return ((moon_bindgen_ptr_uint64_t *)raw_slot)->value;
 }
 
 MOONBIT_FFI_EXPORT
@@ -146,5 +273,29 @@ void *moon_bindgen_test_context_null(void) {
 MOONBIT_FFI_EXPORT
 int32_t moon_bindgen_test_context_is_null(void *value) {
   return value == (void *)0;
+}
+
+extern void test_byte_pointer(const uint8_t * * out, uint64_t * out_len);
+MOONBIT_FFI_EXPORT
+void moon_bindgen_test_byte_pointer_pointer_out(void *out, void *out_len) {
+  test_byte_pointer(&((moon_bindgen_ptr_constptr_byte_t *)out)->value, &((moon_bindgen_ptr_uint64_t *)out_len)->value);
+}
+
+extern void test_context_create(moon_bindgen_c_TestContext * * out);
+MOONBIT_FFI_EXPORT
+void moon_bindgen_test_context_create_pointer_out(void *out) {
+  test_context_create(&((moon_bindgen_ptr_ptr_testcontext_t *)out)->value);
+}
+
+extern void test_context_pointer_pointer(moon_bindgen_c_TestContext * * * out);
+MOONBIT_FFI_EXPORT
+void moon_bindgen_test_context_pointer_pointer_pointer_out(void *out) {
+  test_context_pointer_pointer(&((moon_bindgen_ptr_ptr_ptr_testcontext_t *)out)->value);
+}
+
+extern void test_int_pointer(int32_t * * out);
+MOONBIT_FFI_EXPORT
+void moon_bindgen_test_int_pointer_pointer_out(void *out) {
+  test_int_pointer(&((moon_bindgen_ptr_ptr_int_t *)out)->value);
 }
 
