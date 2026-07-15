@@ -34,4 +34,5 @@ unsafe extern "C" {
     pub fn test_context_value(context: *const TestContext) -> i32;
     pub fn test_context_pointer_pointer(out: *mut *mut *mut TestContext);
     pub fn test_int_pointer(out: *mut *mut i32);
+    pub fn test_byte_pointer(out: *mut *const u8, out_len: *mut usize);
 }

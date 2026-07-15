@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct TestPoint {
   int32_t x;
@@ -24,6 +25,7 @@ static TestContext test_context = {1234};
 static TestContext *test_context_slot;
 static TestContext **test_context_slot_pointer = &test_context_slot;
 static int32_t test_integer = 42;
+static const uint8_t test_bytes[] = {1, 2, 3, 4};
 
 TestPoint test_point_translate(TestPoint point, int32_t dx, int32_t dy) {
   point.x += dx;
@@ -75,4 +77,9 @@ void test_context_pointer_pointer(TestContext ***out) {
 
 void test_int_pointer(int32_t **out) {
   *out = &test_integer;
+}
+
+void test_byte_pointer(const uint8_t **out, size_t *out_len) {
+  *out = test_bytes;
+  *out_len = sizeof(test_bytes);
 }
