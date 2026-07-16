@@ -11,6 +11,10 @@
 
 name = "nuskey8/sandbox"
 
+import {
+  "nuskey8/c@0.3.0"
+}
+
 version = "0.1.0"
 
 readme = "README.mbt.md"
