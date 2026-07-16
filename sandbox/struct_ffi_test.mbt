@@ -6,7 +6,7 @@ fn uint64_array_as_csize_array(
 ///|
 fn byte_pointer_outputs() -> (
   FixedArray[@c.ReadOnlyPointer[Byte]],
-  @c.Pointer[@c.CSize],
+  UInt64,
 ) {
   let pointers : FixedArray[@c.ReadOnlyPointer[Byte]] = [
     @c.ReadOnlyPointer::null(),
@@ -17,7 +17,7 @@ fn byte_pointer_outputs() -> (
     @c.ReadOnlyPointerArray::as_pointer(pointers),
     length_pointer,
   )
-  (pointers, length_pointer)
+  (pointers, length_pointer.as_readonly().read_size())
 }
 
 ///|
@@ -55,7 +55,7 @@ test "pointer field in an input struct" {
   let (pointers, length) = byte_pointer_outputs()
   let slice = TestSlice::{
     data: pointers[0],
-    len: length.as_readonly().read_size(),
+    len: length,
   }
   assert_eq(test_slice_sum(slice), 10U)
 }
@@ -96,6 +96,6 @@ test "double pointer to a primitive" {
 ///|
 test "double pointer to borrowed bytes" {
   let (pointers, length) = byte_pointer_outputs()
-  assert_eq(length.as_readonly().read_size(), 4UL)
+  assert_eq(length, 4UL)
   assert_eq(pointers[0].read_uint8(), 1)
 }
