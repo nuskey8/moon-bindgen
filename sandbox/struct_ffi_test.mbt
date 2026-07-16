@@ -1,9 +1,4 @@
 ///|
-fn uint64_array_as_csize_array(
-  values : FixedArray[UInt64],
-) -> FixedArray[@c.CSize] = "%identity"
-
-///|
 fn byte_pointer_outputs() -> (
   FixedArray[@c.ReadOnlyPointer[Byte]],
   UInt64,
@@ -11,7 +6,7 @@ fn byte_pointer_outputs() -> (
   let pointers : FixedArray[@c.ReadOnlyPointer[Byte]] = [
     @c.ReadOnlyPointer::null(),
   ]
-  let lengths = uint64_array_as_csize_array([0UL])
+  let lengths : FixedArray[@c.CSize] = [0UL]
   let length_pointer = @c.CSizeArrayAsPointer::as_pointer(lengths)
   test_byte_pointer(
     @c.ReadOnlyPointerArray::as_pointer(pointers),
