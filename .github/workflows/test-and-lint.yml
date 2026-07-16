@@ -52,6 +52,10 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-targets
 
+      - name: Update MoonBit dependencies
+        working-directory: sandbox
+        run: moon update
+
       - name: Check generated MoonBit bindings
         working-directory: sandbox
         run: moon check --target native
