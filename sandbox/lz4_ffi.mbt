@@ -3,10 +3,6 @@
 
 ///|
 #external
-pub type RawPtr // opaque C type
-
-///|
-#external
 pub type Lz4StreamDecodeTInternal // #[repr(C)] struct
 
 ///|
@@ -20,62 +16,6 @@ pub type Lz4StreamTInternal // #[repr(C)] struct
 ///|
 #external
 pub type Lz4StreamU // C union
-
-extern "c" fn moon_bindgen_ptr_int_new(initial : Int) -> Ptr[Int] = "moon_bindgen_ptr_int_new"
-
-#borrow(slot)
-extern "c" fn moon_bindgen_ptr_int_get(slot : Ptr[Int]) -> Int = "moon_bindgen_ptr_int_get"
-
-///|
-extern "c" fn moon_bindgen_lz4_stream_decode_t_null() -> Lz4StreamDecodeT = "moon_bindgen_lz4_stream_decode_t_null"
-
-///|
-#borrow(value)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_is_null(value : Lz4StreamDecodeT) -> Bool = "moon_bindgen_lz4_stream_decode_t_is_null"
-
-///|
-pub fn Lz4StreamDecodeT::null() -> Lz4StreamDecodeT {
-  moon_bindgen_lz4_stream_decode_t_null()
-}
-
-///|
-pub fn Lz4StreamDecodeT::is_null(self : Lz4StreamDecodeT) -> Bool {
-  moon_bindgen_lz4_stream_decode_t_is_null(self)
-}
-
-///|
-extern "c" fn moon_bindgen_lz4_stream_t_null() -> Lz4StreamT = "moon_bindgen_lz4_stream_t_null"
-
-///|
-#borrow(value)
-extern "c" fn moon_bindgen_lz4_stream_t_is_null(value : Lz4StreamT) -> Bool = "moon_bindgen_lz4_stream_t_is_null"
-
-///|
-pub fn Lz4StreamT::null() -> Lz4StreamT {
-  moon_bindgen_lz4_stream_t_null()
-}
-
-///|
-pub fn Lz4StreamT::is_null(self : Lz4StreamT) -> Bool {
-  moon_bindgen_lz4_stream_t_is_null(self)
-}
-
-///|
-extern "c" fn moon_bindgen_raw_ptr_null() -> RawPtr = "moon_bindgen_raw_ptr_null"
-
-///|
-#borrow(value)
-extern "c" fn moon_bindgen_raw_ptr_is_null(value : RawPtr) -> Bool = "moon_bindgen_raw_ptr_is_null"
-
-///|
-pub fn RawPtr::null() -> RawPtr {
-  moon_bindgen_raw_ptr_null()
-}
-
-///|
-pub fn RawPtr::is_null(self : RawPtr) -> Bool {
-  moon_bindgen_raw_ptr_is_null(self)
-}
 
 ///|
 pub type Lz4Byte = Byte
@@ -324,214 +264,166 @@ pub const WINT_MAX : UInt = 2147483647
 pub const WINT_MIN : Int = -2147483648
 
 #borrow(working_stream, dictionary_stream)
-pub extern "c" fn lz4_attach_dictionary(working_stream : Lz4StreamT, dictionary_stream : Lz4StreamT) = "LZ4_attach_dictionary"
+pub extern "c" fn lz4_attach_dictionary(working_stream : @c.Pointer[Lz4StreamT], dictionary_stream : @c.ReadOnlyPointer[Lz4StreamT]) = "LZ4_attach_dictionary"
 
 #borrow(src, dest)
-pub extern "c" fn lz4_compress(src : Bytes, dest : Bytes, src_size : Int) -> Int = "LZ4_compress"
+pub extern "c" fn lz4_compress(src : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], src_size : Int) -> Int = "LZ4_compress"
 
 pub extern "c" fn lz4_compress_bound(input_size : Int) -> Int = "LZ4_compressBound"
 
 #borrow(lz4_stream_ptr, source, dest)
-pub extern "c" fn lz4_compress_continue(lz4_stream_ptr : Lz4StreamT, source : Bytes, dest : Bytes, input_size : Int) -> Int = "LZ4_compress_continue"
+pub extern "c" fn lz4_compress_continue(lz4_stream_ptr : @c.Pointer[Lz4StreamT], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : Int) -> Int = "LZ4_compress_continue"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_compress_default(src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int) -> Int = "LZ4_compress_default"
+pub extern "c" fn lz4_compress_default(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int) -> Int = "LZ4_compress_default"
 
 #borrow(src, dst, src_size_ptr)
-extern "c" fn moon_bindgen_lz4_compress_dest_size_pointer_out(src : Bytes, dst : Bytes, src_size_ptr : Ptr[Int], target_dst_size : Int) -> Int = "moon_bindgen_lz4_compress_dest_size_pointer_out"
-
-///|
-pub fn lz4_compress_dest_size(src : Bytes, dst : Bytes, src_size_ptr : Ref[Int], target_dst_size : Int) -> Int {
-  let src_size_ptr_slot = moon_bindgen_ptr_int_new(src_size_ptr.val)
-  let result = moon_bindgen_lz4_compress_dest_size_pointer_out(src, dst, src_size_ptr_slot, target_dst_size)
-  src_size_ptr.val = moon_bindgen_ptr_int_get(src_size_ptr_slot)
-  result
-}
+pub extern "c" fn lz4_compress_dest_size(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size_ptr : @c.Pointer[@c.CInt], target_dst_size : Int) -> Int = "LZ4_compress_destSize"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_compress_fast(src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast"
+pub extern "c" fn lz4_compress_fast(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast"
 
 #borrow(stream_ptr, src, dst)
-pub extern "c" fn lz4_compress_fast_continue(stream_ptr : Lz4StreamT, src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast_continue"
+pub extern "c" fn lz4_compress_fast_continue(stream_ptr : @c.Pointer[Lz4StreamT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast_continue"
 
 #borrow(state, src, dst)
-pub extern "c" fn lz4_compress_fast_ext_state(state : RawPtr, src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast_extState"
+pub extern "c" fn lz4_compress_fast_ext_state(state : @c.Pointer[@c.CVoid], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int, acceleration : Int) -> Int = "LZ4_compress_fast_extState"
 
 #borrow(src, dest)
-pub extern "c" fn lz4_compress_limited_output(src : Bytes, dest : Bytes, src_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput"
+pub extern "c" fn lz4_compress_limited_output(src : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], src_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput"
 
 #borrow(lz4_stream_ptr, source, dest)
-pub extern "c" fn lz4_compress_limited_output_continue(lz4_stream_ptr : Lz4StreamT, source : Bytes, dest : Bytes, input_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput_continue"
+pub extern "c" fn lz4_compress_limited_output_continue(lz4_stream_ptr : @c.Pointer[Lz4StreamT], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput_continue"
 
 #borrow(state, source, dest)
-pub extern "c" fn lz4_compress_limited_output_with_state(state : RawPtr, source : Bytes, dest : Bytes, input_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput_withState"
+pub extern "c" fn lz4_compress_limited_output_with_state(state : @c.Pointer[@c.CVoid], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : Int, max_output_size : Int) -> Int = "LZ4_compress_limitedOutput_withState"
 
 #borrow(state, source, dest)
-pub extern "c" fn lz4_compress_with_state(state : RawPtr, source : Bytes, dest : Bytes, input_size : Int) -> Int = "LZ4_compress_withState"
+pub extern "c" fn lz4_compress_with_state(state : @c.Pointer[@c.CVoid], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : Int) -> Int = "LZ4_compress_withState"
 
 #borrow(input_buffer)
-extern "c" fn moon_bindgen_lz4_create_raw(input_buffer : Bytes) -> RawPtr = "LZ4_create"
+pub extern "c" fn lz4_create(input_buffer : @c.Pointer[@c.CChar]) -> @c.Pointer[@c.CVoid] = "LZ4_create"
 
-///|
-pub fn lz4_create(input_buffer : Bytes) -> RawPtr? {
-  let result = moon_bindgen_lz4_create_raw(input_buffer)
-  if result.is_null() {
-    None
-  } else {
-    Some(result)
-  }
-}
+pub extern "c" fn lz4_create_stream() -> @c.Pointer[Lz4StreamT] = "LZ4_createStream"
 
-extern "c" fn moon_bindgen_lz4_create_stream_raw() -> Lz4StreamT = "LZ4_createStream"
-
-///|
-pub fn lz4_create_stream() -> Lz4StreamT? {
-  let result = moon_bindgen_lz4_create_stream_raw()
-  if result.is_null() {
-    None
-  } else {
-    Some(result)
-  }
-}
-
-extern "c" fn moon_bindgen_lz4_create_stream_decode_raw() -> Lz4StreamDecodeT = "LZ4_createStreamDecode"
-
-///|
-pub fn lz4_create_stream_decode() -> Lz4StreamDecodeT? {
-  let result = moon_bindgen_lz4_create_stream_decode_raw()
-  if result.is_null() {
-    None
-  } else {
-    Some(result)
-  }
-}
+pub extern "c" fn lz4_create_stream_decode() -> @c.Pointer[Lz4StreamDecodeT] = "LZ4_createStreamDecode"
 
 pub extern "c" fn lz4_decoder_ring_buffer_size(max_block_size : Int) -> Int = "LZ4_decoderRingBufferSize"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_decompress_fast(src : Bytes, dst : Bytes, original_size : Int) -> Int = "LZ4_decompress_fast"
+pub extern "c" fn lz4_decompress_fast(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : Int) -> Int = "LZ4_decompress_fast"
 
 #borrow(lz4_stream_decode, src, dst)
-pub extern "c" fn lz4_decompress_fast_continue(lz4_stream_decode : Lz4StreamDecodeT, src : Bytes, dst : Bytes, original_size : Int) -> Int = "LZ4_decompress_fast_continue"
+pub extern "c" fn lz4_decompress_fast_continue(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : Int) -> Int = "LZ4_decompress_fast_continue"
 
 #borrow(src, dst, dict_start)
-pub extern "c" fn lz4_decompress_fast_using_dict(src : Bytes, dst : Bytes, original_size : Int, dict_start : Bytes, dict_size : Int) -> Int = "LZ4_decompress_fast_usingDict"
+pub extern "c" fn lz4_decompress_fast_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : Int, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_decompress_fast_usingDict"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_decompress_fast_with_prefix64k(src : Bytes, dst : Bytes, original_size : Int) -> Int = "LZ4_decompress_fast_withPrefix64k"
+pub extern "c" fn lz4_decompress_fast_with_prefix64k(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : Int) -> Int = "LZ4_decompress_fast_withPrefix64k"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_decompress_safe(src : Bytes, dst : Bytes, compressed_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe"
+pub extern "c" fn lz4_decompress_safe(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe"
 
 #borrow(lz4_stream_decode, src, dst)
-pub extern "c" fn lz4_decompress_safe_continue(lz4_stream_decode : Lz4StreamDecodeT, src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe_continue"
+pub extern "c" fn lz4_decompress_safe_continue(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe_continue"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_decompress_safe_partial(src : Bytes, dst : Bytes, src_size : Int, target_output_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe_partial"
+pub extern "c" fn lz4_decompress_safe_partial(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, target_output_size : Int, dst_capacity : Int) -> Int = "LZ4_decompress_safe_partial"
 
 #borrow(src, dst, dict_start)
-pub extern "c" fn lz4_decompress_safe_partial_using_dict(src : Bytes, dst : Bytes, compressed_size : Int, target_output_size : Int, max_output_size : Int, dict_start : Bytes, dict_size : Int) -> Int = "LZ4_decompress_safe_partial_usingDict"
+pub extern "c" fn lz4_decompress_safe_partial_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : Int, target_output_size : Int, max_output_size : Int, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_decompress_safe_partial_usingDict"
 
 #borrow(src, dst, dict_start)
-pub extern "c" fn lz4_decompress_safe_using_dict(src : Bytes, dst : Bytes, src_size : Int, dst_capacity : Int, dict_start : Bytes, dict_size : Int) -> Int = "LZ4_decompress_safe_usingDict"
+pub extern "c" fn lz4_decompress_safe_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : Int, dst_capacity : Int, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_decompress_safe_usingDict"
 
 #borrow(src, dst)
-pub extern "c" fn lz4_decompress_safe_with_prefix64k(src : Bytes, dst : Bytes, compressed_size : Int, max_dst_size : Int) -> Int = "LZ4_decompress_safe_withPrefix64k"
+pub extern "c" fn lz4_decompress_safe_with_prefix64k(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : Int, max_dst_size : Int) -> Int = "LZ4_decompress_safe_withPrefix64k"
 
 #borrow(stream_ptr)
-pub extern "c" fn lz4_free_stream(stream_ptr : Lz4StreamT) -> Int = "LZ4_freeStream"
+pub extern "c" fn lz4_free_stream(stream_ptr : @c.Pointer[Lz4StreamT]) -> Int = "LZ4_freeStream"
 
 #borrow(lz4_stream)
-pub extern "c" fn lz4_free_stream_decode(lz4_stream : Lz4StreamDecodeT) -> Int = "LZ4_freeStreamDecode"
+pub extern "c" fn lz4_free_stream_decode(lz4_stream : @c.Pointer[Lz4StreamDecodeT]) -> Int = "LZ4_freeStreamDecode"
 
 #borrow(state_buffer)
-extern "c" fn moon_bindgen_lz4_init_stream_raw(state_buffer : RawPtr, size : UInt64) -> Lz4StreamT = "LZ4_initStream"
-
-///|
-pub fn lz4_init_stream(state_buffer : RawPtr, size : UInt64) -> Lz4StreamT? {
-  let result = moon_bindgen_lz4_init_stream_raw(state_buffer, size)
-  if result.is_null() {
-    None
-  } else {
-    Some(result)
-  }
-}
+pub extern "c" fn lz4_init_stream(state_buffer : @c.Pointer[@c.CVoid], size : UInt64) -> @c.Pointer[Lz4StreamT] = "LZ4_initStream"
 
 #borrow(stream_ptr, dictionary)
-pub extern "c" fn lz4_load_dict(stream_ptr : Lz4StreamT, dictionary : Bytes, dict_size : Int) -> Int = "LZ4_loadDict"
+pub extern "c" fn lz4_load_dict(stream_ptr : @c.Pointer[Lz4StreamT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_loadDict"
 
 #borrow(stream_ptr, dictionary)
-pub extern "c" fn lz4_load_dict_slow(stream_ptr : Lz4StreamT, dictionary : Bytes, dict_size : Int) -> Int = "LZ4_loadDictSlow"
+pub extern "c" fn lz4_load_dict_slow(stream_ptr : @c.Pointer[Lz4StreamT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_loadDictSlow"
 
 #borrow(stream_ptr)
-pub extern "c" fn lz4_reset_stream(stream_ptr : Lz4StreamT) = "LZ4_resetStream"
+pub extern "c" fn lz4_reset_stream(stream_ptr : @c.Pointer[Lz4StreamT]) = "LZ4_resetStream"
 
 #borrow(state, input_buffer)
-pub extern "c" fn lz4_reset_stream_state(state : RawPtr, input_buffer : Bytes) -> Int = "LZ4_resetStreamState"
+pub extern "c" fn lz4_reset_stream_state(state : @c.Pointer[@c.CVoid], input_buffer : @c.Pointer[@c.CChar]) -> Int = "LZ4_resetStreamState"
 
 #borrow(stream_ptr)
-pub extern "c" fn lz4_reset_stream_fast(stream_ptr : Lz4StreamT) = "LZ4_resetStream_fast"
+pub extern "c" fn lz4_reset_stream_fast(stream_ptr : @c.Pointer[Lz4StreamT]) = "LZ4_resetStream_fast"
 
 #borrow(stream_ptr, safe_buffer)
-pub extern "c" fn lz4_save_dict(stream_ptr : Lz4StreamT, safe_buffer : Bytes, max_dict_size : Int) -> Int = "LZ4_saveDict"
+pub extern "c" fn lz4_save_dict(stream_ptr : @c.Pointer[Lz4StreamT], safe_buffer : @c.Pointer[@c.CChar], max_dict_size : Int) -> Int = "LZ4_saveDict"
 
 #borrow(lz4_stream_decode, dictionary)
-pub extern "c" fn lz4_set_stream_decode(lz4_stream_decode : Lz4StreamDecodeT, dictionary : Bytes, dict_size : Int) -> Int = "LZ4_setStreamDecode"
+pub extern "c" fn lz4_set_stream_decode(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : Int) -> Int = "LZ4_setStreamDecode"
 
 pub extern "c" fn lz4_sizeof_state() -> Int = "LZ4_sizeofState"
 
 pub extern "c" fn lz4_sizeof_stream_state() -> Int = "LZ4_sizeofStreamState"
 
 #borrow(state)
-pub extern "c" fn lz4_slide_input_buffer(state : RawPtr) -> Bytes? = "LZ4_slideInputBuffer"
+pub extern "c" fn lz4_slide_input_buffer(state : @c.Pointer[@c.CVoid]) -> @c.Pointer[@c.CChar] = "LZ4_slideInputBuffer"
 
 #borrow(source, dest)
-pub extern "c" fn lz4_uncompress(source : Bytes, dest : Bytes, output_size : Int) -> Int = "LZ4_uncompress"
+pub extern "c" fn lz4_uncompress(source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], output_size : Int) -> Int = "LZ4_uncompress"
 
 #borrow(source, dest)
-pub extern "c" fn lz4_uncompress_unknown_output_size(source : Bytes, dest : Bytes, isize : Int, max_output_size : Int) -> Int = "LZ4_uncompress_unknownOutputSize"
+pub extern "c" fn lz4_uncompress_unknown_output_size(source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], isize : Int, max_output_size : Int) -> Int = "LZ4_uncompress_unknownOutputSize"
 
 pub extern "c" fn lz4_version_number() -> Int = "LZ4_versionNumber"
 
-pub extern "c" fn lz4_version_string() -> Bytes? = "LZ4_versionString"
+pub extern "c" fn lz4_version_string() -> @c.ReadOnlyPointer[@c.CChar] = "LZ4_versionString"
 
 #borrow(external_dict, prefix_end)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_new(external_dict : Ref[Byte], prefix_end : Ref[Byte], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal = "moon_bindgen_lz4_stream_decode_t_internal_new"
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_new(external_dict : @c.ReadOnlyPointer[@c.CUnsignedChar], prefix_end : @c.ReadOnlyPointer[@c.CUnsignedChar], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal = "moon_bindgen_lz4_stream_decode_t_internal_new"
 
 ///|
-pub fn Lz4StreamDecodeTInternal::new(external_dict : Ref[Byte], prefix_end : Ref[Byte], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal {
+pub fn Lz4StreamDecodeTInternal::new(external_dict : @c.ReadOnlyPointer[@c.CUnsignedChar], prefix_end : @c.ReadOnlyPointer[@c.CUnsignedChar], ext_dict_size : UInt64, prefix_size : UInt64) -> Lz4StreamDecodeTInternal {
   moon_bindgen_lz4_stream_decode_t_internal_new(external_dict, prefix_end, ext_dict_size, prefix_size)
 }
 
 #borrow(object)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_get(object : Lz4StreamDecodeTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_get"
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_get(object : Lz4StreamDecodeTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_get"
 
 ///|
-pub fn Lz4StreamDecodeTInternal::get_external_dict(self : Lz4StreamDecodeTInternal) -> Ref[Byte] {
+pub fn Lz4StreamDecodeTInternal::get_external_dict(self : Lz4StreamDecodeTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
   moon_bindgen_lz4_stream_decode_t_internal_external_dict_get(self)
 }
 
 #borrow(object, value)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_set(object : Lz4StreamDecodeTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_set"
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_external_dict_set(object : Lz4StreamDecodeTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_decode_t_internal_external_dict_set"
 
 ///|
-pub fn Lz4StreamDecodeTInternal::set_external_dict(self : Lz4StreamDecodeTInternal, value : Ref[Byte]) -> Unit {
+pub fn Lz4StreamDecodeTInternal::set_external_dict(self : Lz4StreamDecodeTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
   moon_bindgen_lz4_stream_decode_t_internal_external_dict_set(self, value)
 }
 
 #borrow(object)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get(object : Lz4StreamDecodeTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get"
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get(object : Lz4StreamDecodeTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get"
 
 ///|
-pub fn Lz4StreamDecodeTInternal::get_prefix_end(self : Lz4StreamDecodeTInternal) -> Ref[Byte] {
+pub fn Lz4StreamDecodeTInternal::get_prefix_end(self : Lz4StreamDecodeTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
   moon_bindgen_lz4_stream_decode_t_internal_prefix_end_get(self)
 }
 
 #borrow(object, value)
-extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set(object : Lz4StreamDecodeTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set"
+extern "c" fn moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set(object : Lz4StreamDecodeTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set"
 
 ///|
-pub fn Lz4StreamDecodeTInternal::set_prefix_end(self : Lz4StreamDecodeTInternal, value : Ref[Byte]) -> Unit {
+pub fn Lz4StreamDecodeTInternal::set_prefix_end(self : Lz4StreamDecodeTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
   moon_bindgen_lz4_stream_decode_t_internal_prefix_end_set(self, value)
 }
 
@@ -568,10 +460,10 @@ pub fn Lz4StreamDecodeTInternal::set_prefix_size(self : Lz4StreamDecodeTInternal
 }
 
 #borrow(hash_table, dictionary, dict_ctx)
-extern "c" fn moon_bindgen_lz4_stream_t_internal_new(hash_table : FixedArray[UInt], dictionary : Ref[Byte], dict_ctx : Lz4StreamTInternal, current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal = "moon_bindgen_lz4_stream_t_internal_new"
+extern "c" fn moon_bindgen_lz4_stream_t_internal_new(hash_table : FixedArray[UInt], dictionary : @c.ReadOnlyPointer[@c.CUnsignedChar], dict_ctx : @c.ReadOnlyPointer[Lz4StreamTInternal], current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal = "moon_bindgen_lz4_stream_t_internal_new"
 
 ///|
-pub fn Lz4StreamTInternal::new(hash_table : FixedArray[UInt], dictionary : Ref[Byte], dict_ctx : Lz4StreamTInternal, current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal {
+pub fn Lz4StreamTInternal::new(hash_table : FixedArray[UInt], dictionary : @c.ReadOnlyPointer[@c.CUnsignedChar], dict_ctx : @c.ReadOnlyPointer[Lz4StreamTInternal], current_offset : UInt, table_type : UInt, dict_size : UInt) -> Lz4StreamTInternal {
   if hash_table.length() != 4096 { abort("hash_table must contain exactly 4096 elements") }
   moon_bindgen_lz4_stream_t_internal_new(hash_table, dictionary, dict_ctx, current_offset, table_type, dict_size)
 }
@@ -596,34 +488,34 @@ pub fn Lz4StreamTInternal::set_hash_table(self : Lz4StreamTInternal, value : Fix
 }
 
 #borrow(object)
-extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_get(object : Lz4StreamTInternal) -> Ref[Byte] = "moon_bindgen_lz4_stream_t_internal_dictionary_get"
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_get(object : Lz4StreamTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_t_internal_dictionary_get"
 
 ///|
-pub fn Lz4StreamTInternal::get_dictionary(self : Lz4StreamTInternal) -> Ref[Byte] {
+pub fn Lz4StreamTInternal::get_dictionary(self : Lz4StreamTInternal) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
   moon_bindgen_lz4_stream_t_internal_dictionary_get(self)
 }
 
 #borrow(object, value)
-extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_set(object : Lz4StreamTInternal, value : Ref[Byte]) = "moon_bindgen_lz4_stream_t_internal_dictionary_set"
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dictionary_set(object : Lz4StreamTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_t_internal_dictionary_set"
 
 ///|
-pub fn Lz4StreamTInternal::set_dictionary(self : Lz4StreamTInternal, value : Ref[Byte]) -> Unit {
+pub fn Lz4StreamTInternal::set_dictionary(self : Lz4StreamTInternal, value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
   moon_bindgen_lz4_stream_t_internal_dictionary_set(self, value)
 }
 
 #borrow(object)
-extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_get(object : Lz4StreamTInternal) -> Lz4StreamTInternal = "moon_bindgen_lz4_stream_t_internal_dict_ctx_get"
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_get(object : Lz4StreamTInternal) -> @c.ReadOnlyPointer[Lz4StreamTInternal] = "moon_bindgen_lz4_stream_t_internal_dict_ctx_get"
 
 ///|
-pub fn Lz4StreamTInternal::get_dict_ctx(self : Lz4StreamTInternal) -> Lz4StreamTInternal {
+pub fn Lz4StreamTInternal::get_dict_ctx(self : Lz4StreamTInternal) -> @c.ReadOnlyPointer[Lz4StreamTInternal] {
   moon_bindgen_lz4_stream_t_internal_dict_ctx_get(self)
 }
 
 #borrow(object, value)
-extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_set(object : Lz4StreamTInternal, value : Lz4StreamTInternal) = "moon_bindgen_lz4_stream_t_internal_dict_ctx_set"
+extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_ctx_set(object : Lz4StreamTInternal, value : @c.ReadOnlyPointer[Lz4StreamTInternal]) = "moon_bindgen_lz4_stream_t_internal_dict_ctx_set"
 
 ///|
-pub fn Lz4StreamTInternal::set_dict_ctx(self : Lz4StreamTInternal, value : Lz4StreamTInternal) -> Unit {
+pub fn Lz4StreamTInternal::set_dict_ctx(self : Lz4StreamTInternal, value : @c.ReadOnlyPointer[Lz4StreamTInternal]) -> Unit {
   moon_bindgen_lz4_stream_t_internal_dict_ctx_set(self, value)
 }
 

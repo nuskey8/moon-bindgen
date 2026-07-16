@@ -30,8 +30,6 @@ pub struct Builder {
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
     constant_rename: fn(String) -> String,
-    use_bytes: bool,
-    emit_pointer_types: bool,
 }
 
 impl Default for Builder {
@@ -52,8 +50,6 @@ impl Default for Builder {
             function_rename: |name| name.to_snake_case(),
             type_rename: |name| name.to_upper_camel_case(),
             constant_rename: |name| name.to_shouty_snake_case(),
-            use_bytes: true,
-            emit_pointer_types: true,
         }
     }
 }
@@ -175,29 +171,14 @@ impl Builder {
         self
     }
 
-    /// Resolves pointer nullability using original Rust names. Unspecified
-    /// external-pointer returns default to nullable; parameters default to non-null.
+    /// Retained for source compatibility. C pointers now use `nuskey8/c` pointer
+    /// types and carry null directly, so this setting no longer changes them.
+    #[deprecated(note = "c.mbt pointer types retain null directly")]
     pub fn moonbit_nullability_resolver<F>(mut self, resolver: F) -> Self
     where
         F: Fn(&str, NullabilityPosition) -> Nullability + 'static,
     {
         self.nullability_resolver = Box::new(resolver);
-        self
-    }
-
-    /// Controls whether single-level byte pointers are represented as `Bytes`.
-    /// When disabled they are represented as `Ptr[Byte]` or `ConstPtr[Byte]`.
-    /// Multi-level pointers always retain their pointer structure.
-    pub fn moonbit_use_bytes(mut self, use_bytes: bool) -> Self {
-        self.use_bytes = use_bytes;
-        self
-    }
-
-    /// Controls whether the shared `Ptr[T]` and `ConstPtr[T]` external type
-    /// declarations are emitted. Disable this for additional generated FFI
-    /// files in the same MoonBit package.
-    pub fn moonbit_emit_pointer_types(mut self, emit: bool) -> Self {
-        self.emit_pointer_types = emit;
         self
     }
 
@@ -252,8 +233,8 @@ impl Builder {
             self.function_rename,
             self.type_rename,
             self.constant_rename,
-            self.use_bytes,
-            self.emit_pointer_types,
+            false,
+            false,
         )
         .with_c_stub_affixes(&self.c_stub_header, &self.c_stub_footer))
     }
@@ -313,53 +294,42 @@ unsafe extern "C" { pub fn round_trip(value: Value) -> Value; }
     }
 
     #[test]
-    fn byte_pointer_specialization_can_be_disabled() {
+    fn pointers_use_the_shared_c_package() {
         let path =
-            std::env::temp_dir().join(format!("moon_bindgen_use_bytes_{}.rs", std::process::id()));
+            std::env::temp_dir().join(format!("moon_bindgen_c_pointer_{}.rs", std::process::id()));
         fs::write(
             &path,
             r#"unsafe extern "C" {
   pub fn bytes(input: *const u8, output: *mut u8);
   pub fn byte_pointer() -> *const u8;
+  pub fn opaque(pointer: *mut core::ffi::c_void) -> *const core::ffi::c_void;
 }"#,
         )
         .unwrap();
-        let specialized = Builder::new().input_extern_file(&path).generate().unwrap();
-        let pointers = Builder::new()
-            .input_extern_file(&path)
-            .moonbit_use_bytes(false)
-            .generate()
-            .unwrap();
-        let additional_file = Builder::new()
-            .input_extern_file(&path)
-            .moonbit_use_bytes(false)
-            .moonbit_emit_pointer_types(false)
-            .generate()
-            .unwrap();
+        let pointers = Builder::new().input_extern_file(&path).generate().unwrap();
         let _ = fs::remove_file(path);
-        assert!(specialized.moonbit_source().contains("input : Bytes"));
-        assert!(pointers.moonbit_source().contains("input : ConstPtr[Byte]"));
-        assert!(pointers.moonbit_source().contains("output : Ptr[Byte]"));
         assert!(
             pointers
                 .moonbit_source()
-                .contains("fn byte_pointer() -> ConstPtr[Byte]")
+                .contains("input : @c.ReadOnlyPointer[@c.CUInt8]")
         );
         assert!(
-            !pointers
+            pointers
                 .moonbit_source()
-                .contains("fn byte_pointer() -> ConstPtr[Byte]?")
-        );
-        assert!(!additional_file.moonbit_source().contains("type Ptr[T]"));
-        assert!(
-            !additional_file
-                .moonbit_source()
-                .contains("type ConstPtr[T]")
+                .contains("output : @c.Pointer[@c.CUInt8]")
         );
         assert!(
-            additional_file
+            pointers
                 .moonbit_source()
-                .contains("input : ConstPtr[Byte]")
+                .contains("pointer : @c.Pointer[@c.CVoid]")
         );
+        assert!(
+            pointers
+                .moonbit_source()
+                .contains("-> @c.ReadOnlyPointer[@c.CVoid]")
+        );
+        assert!(!pointers.moonbit_source().contains("type Ptr[T]"));
+        assert!(!pointers.moonbit_source().contains("Bytes"));
+        assert!(!pointers.c_stub_source().contains("moon_bindgen_ptr_"));
     }
 }

@@ -18,7 +18,6 @@ struct Context<'a> {
     ownership_resolver: &'a dyn Fn(&str, &str) -> Ownership,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
-    use_bytes: bool,
 }
 
 #[derive(Clone)]
@@ -36,7 +35,6 @@ pub(crate) fn render(
     ownership_resolver: &dyn Fn(&str, &str) -> Ownership,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
-    use_bytes: bool,
 ) -> StubOutput {
     let ctx = Context {
         model,
@@ -44,7 +42,6 @@ pub(crate) fn render(
         ownership_resolver,
         function_rename,
         type_rename,
-        use_bytes,
     };
     let mut candidates = BTreeSet::new();
     for function in model.functions.values() {
@@ -181,7 +178,7 @@ fn emit_constructor(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut St
 
     for leaf in &leaves {
         let param = value_name(&leaf.path.join("_"));
-        let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+        let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
         let is_array = matches!(resolve_alias(&leaf.ty, ctx.model), Type::Array { .. });
         params.push(format!("{param} : {moon_ty}"));
         if is_array || needs_ownership(&leaf.ty) {
@@ -251,7 +248,7 @@ fn emit_field_accessors(
 ) {
     let field = value_name(&leaf.path.join("_"));
     let field_expr = leaf.path.join(".");
-    let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+    let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
     let prefix = format!("moon_bindgen_{}_{}", struct_name.to_snake_case(), field);
     let getter = format!("{prefix}_get");
     let setter = format!("{prefix}_set");
@@ -329,7 +326,7 @@ fn emit_moonbit_struct(out: &mut String, structure: &Struct, ctx: &Context<'_>) 
         ty
     ));
     for field in &structure.fields {
-        let ty = moon_type(&field.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+        let ty = moon_type(&field.ty, ctx.model, ctx.type_rename).unwrap();
         out.push_str(&format!("  {} : {}\n", value_name(&field.name), ty));
     }
     out.push_str("}\n\n");
@@ -340,7 +337,7 @@ fn emit_moonbit_struct(out: &mut String, structure: &Struct, ctx: &Context<'_>) 
             format!(
                 "{} : {}",
                 value_name(&field.name),
-                moon_type(&field.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap()
+                moon_type(&field.ty, ctx.model, ctx.type_rename).unwrap()
             )
         })
         .collect::<Vec<_>>();
@@ -371,7 +368,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
         let safe_param = value_name(param_name);
         wrapper_params.push(format!(
             "{safe_param} : {}",
-            moon_type(ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap()
+            moon_type(ty, ctx.model, ctx.type_rename).unwrap()
         ));
         if let Some(struct_name) = by_value_struct(ty, ctx.model) {
             let local = format!("moon_bindgen_arg_{safe_param}");
@@ -379,8 +376,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
             let leaves = struct_leaves(struct_name, ctx.model);
             for leaf in leaves {
                 let flat = format!("{}_{}", safe_param, leaf.path.join("_"));
-                let moon_ty =
-                    moon_type(&leaf.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+                let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
                 let is_array = matches!(leaf.ty, Type::Array { .. });
                 let ownership = if needs_ownership(&leaf.ty) && !is_array {
                     Some((ctx.ownership_resolver)(&function.rust_name, param_name))
@@ -408,7 +404,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
             }
             c_call_args.push(local);
         } else {
-            let moon_ty = moon_type(ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+            let moon_ty = moon_type(ty, ctx.model, ctx.type_rename).unwrap();
             let ownership = if needs_ownership(ty) {
                 Some((ctx.ownership_resolver)(&function.rust_name, param_name))
             } else {
@@ -428,7 +424,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
     let shim_result = if let Some(name) = result_struct {
         repr_name(name, ctx.type_rename)
     } else {
-        moon_type(&function.result, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap()
+        moon_type(&function.result, ctx.model, ctx.type_rename).unwrap()
     };
     emit_annotations(moon, &shim_params);
     moon.push_str(&format!("extern \"c\" fn {shim}("));
@@ -451,8 +447,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
         safe_ident(&(ctx.function_rename)(function.rust_name.clone())),
         wrapper_params.join(", ")
     ));
-    let public_result =
-        moon_type(&function.result, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+    let public_result = moon_type(&function.result, ctx.model, ctx.type_rename).unwrap();
     if public_result != "Unit" {
         moon.push_str(&format!(" -> {public_result}"));
     }
@@ -513,7 +508,7 @@ fn emit_result_helpers(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut
         let suffix = leaf.path.join("_").to_snake_case();
         let getter = format!("moon_bindgen_get_{}_{}", name.to_snake_case(), suffix);
         let field_expr = leaf.path.join(".");
-        let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename, ctx.use_bytes).unwrap();
+        let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
         if let Type::Array { len: Some(len), .. } = leaf.ty {
             moon.push_str(&format!(
                 "///|\n#borrow(value, out)\nextern \"c\" fn {getter}(value : {repr}, out : {moon_ty}) = \"{getter}\"\n\n"
@@ -771,15 +766,7 @@ fn resolve_alias<'a>(ty: &'a Type, model: &'a Model) -> &'a Type {
     }
 }
 
-fn moon_type(
-    ty: &Type,
-    model: &Model,
-    rename: fn(String) -> String,
-    use_bytes: bool,
-) -> Option<String> {
-    if let Some(name) = opaque_pointer_carrier_name(ty, model, rename) {
-        return Some(name);
-    }
+fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<String> {
     match resolve_alias(ty, model) {
         Type::Unit => Some("Unit".into()),
         Type::Path(path) => Some(match last(path) {
@@ -794,47 +781,31 @@ fn moon_type(
             "c_void" => "Unit".into(),
             other => type_name(other, rename),
         }),
-        Type::Pointer { inner, mutable } => match resolve_alias(inner, model) {
-            Type::Path(path) if use_bytes && matches!(last(path), "c_char" | "i8" | "u8") => {
-                Some("Bytes".into())
-            }
-            Type::Path(path) if matches!(last(path), "c_char" | "i8" | "u8") => Some(format!(
-                "{}[Byte]",
-                if *mutable { "Ptr" } else { "ConstPtr" }
-            )),
-            Type::Path(path) if last(path) == "c_void" => Some("RawPtr".into()),
-            Type::Path(path) if primitive_c_type(last(path)).is_some() => Some(format!(
-                "Ref[{}]",
-                moon_type(inner, model, rename, use_bytes)?
-            )),
-            Type::Path(path) => Some(type_name(last(path), rename)),
-            _ => moon_type(inner, model, rename, use_bytes).map(|ty| format!("Ref[{ty}]")),
-        },
-        Type::Array { inner, .. } => Some(format!(
-            "FixedArray[{}]",
-            moon_type(inner, model, rename, use_bytes)?
+        Type::Pointer { inner, mutable } => Some(format!(
+            "@c.{}[{}]",
+            if *mutable {
+                "Pointer"
+            } else {
+                "ReadOnlyPointer"
+            },
+            moon_pointee_type(inner, model, rename)?
         )),
+        Type::Array { inner, .. } => {
+            Some(format!("FixedArray[{}]", moon_type(inner, model, rename)?))
+        }
         _ => None,
     }
 }
 
-fn opaque_pointer_carrier_name(
-    ty: &Type,
-    model: &Model,
-    rename: fn(String) -> String,
-) -> Option<String> {
-    let mut current = resolve_alias(ty, model);
-    let mut depth = 0;
-    while let Type::Pointer { inner, .. } = current {
-        depth += 1;
-        current = resolve_alias(inner, model);
+fn moon_pointee_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<String> {
+    match resolve_alias(ty, model) {
+        Type::Path(path) => Some(
+            crate::generate::c_marker_type(last(path))
+                .map(str::to_owned)
+                .unwrap_or_else(|| type_name(last(path), rename)),
+        ),
+        other => moon_type(other, model, rename),
     }
-    let Type::Path(path) = current else {
-        return None;
-    };
-    let base = last(path);
-    (depth >= 2 && primitive_c_type(base).is_none() && base != "c_void")
-        .then(|| format!("{}{}", type_name(base, rename), "Ptr".repeat(depth - 1)))
 }
 
 pub(crate) fn c_type(ty: &Type, model: &Model) -> Option<String> {
@@ -868,9 +839,6 @@ pub(crate) fn c_abi_type(ty: &Type, model: &Model) -> Option<String> {
     match resolve_alias(ty, model) {
         Type::Unit => Some("void".into()),
         Type::Pointer { inner, .. } => match resolve_alias(inner, model) {
-            Type::Path(path) if matches!(last(path), "c_char" | "i8" | "u8") => {
-                Some("moonbit_bytes_t".into())
-            }
             Type::Path(path) if primitive_c_type(last(path)).is_some() => c_type(ty, model),
             Type::Path(_) => Some("void *".into()),
             Type::Pointer { .. } => c_type(ty, model),

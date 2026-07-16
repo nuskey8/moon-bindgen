@@ -1,4 +1,26 @@
 ///|
+fn uint64_array_as_csize_array(
+  values : FixedArray[UInt64],
+) -> FixedArray[@c.CSize] = "%identity"
+
+///|
+fn byte_pointer_outputs() -> (
+  FixedArray[@c.ReadOnlyPointer[Byte]],
+  @c.Pointer[@c.CSize],
+) {
+  let pointers : FixedArray[@c.ReadOnlyPointer[Byte]] = [
+    @c.ReadOnlyPointer::null(),
+  ]
+  let lengths = uint64_array_as_csize_array([0UL])
+  let length_pointer = @c.CSizeArrayAsPointer::as_pointer(lengths)
+  test_byte_pointer(
+    @c.ReadOnlyPointerArray::as_pointer(pointers),
+    length_pointer,
+  )
+  (pointers, length_pointer)
+}
+
+///|
 test "struct values through generated C stub" {
   let point = TestPoint::{
     x: 10,
@@ -30,49 +52,50 @@ test "nested struct values through generated C stub" {
 
 ///|
 test "pointer field in an input struct" {
-  let data = b"\x01\x02\x03\x04"
-  let slice = TestSlice::{ data, len: data.length().to_uint64() }
+  let (pointers, length) = byte_pointer_outputs()
+  let slice = TestSlice::{
+    data: pointers[0],
+    len: length.as_readonly().read_size(),
+  }
   assert_eq(test_slice_sum(slice), 10U)
 }
 
 ///|
-test "external pointer return is nullable by default" {
-  match test_context_null() {
-    None => ()
-    Some(_) => fail("expected None")
-  }
+test "external pointer retains null" {
+  assert_true(test_context_null().is_null())
 }
 
 ///|
 test "double pointer to an external context" {
-  let context = Ref(moon_bindgen_ptr_testcontext_null())
+  let context = test_context_ptr()
   test_context_create(context)
-  assert_eq(test_context_value(moon_bindgen_ptr_testcontext_deref(context.val)), 1234)
+  assert_eq(
+    test_context_value(context.as_readonly().read_pointer().as_readonly()),
+    1234,
+  )
 }
 
 ///|
 test "triple pointer updates the deepest external context" {
-  let context = Ref(test_context_ptr())
+  let context = test_context_ptr_ptr()
   test_context_pointer_pointer(context)
-  let inner = moon_bindgen_ptr_ptr_testcontext_deref(context.val)
-  assert_eq(test_context_value(moon_bindgen_ptr_testcontext_deref(inner)), 1234)
+  let inner = context.as_readonly().read_pointer().as_readonly().read_pointer()
+  assert_eq(test_context_value(inner.as_readonly()), 1234)
 }
 
 ///|
 test "double pointer to a primitive" {
-  let value = Ref(moon_bindgen_ptr_int_null())
-  test_int_pointer(value)
-  assert_eq(moon_bindgen_ptr_int_read(value.val), 42)
+  let values : FixedArray[@c.Pointer[Int]] = [@c.Pointer::null()]
+  test_int_pointer(@c.PointerArray::as_pointer(values))
+  let value = values[0]
+  assert_eq(value.as_readonly().read_int32(), 42)
+  value.write_int32(99)
+  assert_eq(value.as_readonly().read_int32(), 99)
 }
 
 ///|
 test "double pointer to borrowed bytes" {
-  let pointer = Ref(moon_bindgen_constptr_byte_null())
-  let length = Ref(0UL)
-  test_byte_pointer(pointer, length)
-  assert_eq(length.val, 4UL)
-  assert_eq(
-    moon_bindgen_constptr_byte_copy_bytes(pointer.val, length.val),
-    b"\x01\x02\x03\x04",
-  )
+  let (pointers, length) = byte_pointer_outputs()
+  assert_eq(length.as_readonly().read_size(), 4UL)
+  assert_eq(pointers[0].read_uint8(), 1)
 }
