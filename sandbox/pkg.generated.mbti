@@ -120,31 +120,31 @@ pub const WINT_MIN : Int = -2147483648
 
 pub fn lz4_attach_dictionary(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Lz4StreamU]) -> Unit
 
-pub fn lz4_compress(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_compress(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
 pub fn lz4_compress_bound(Int) -> Int
 
-pub fn lz4_compress_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_compress_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_compress_default(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_compress_default(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_compress_dest_size(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], @c.Pointer[Int], Int) -> Int
+pub fn lz4_compress_dest_size(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], @c.Pointer[Int], Int) -> Int
 
-pub fn lz4_compress_fast(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, Int) -> Int
+pub fn lz4_compress_fast(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, Int) -> Int
 
-pub fn lz4_compress_fast_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, Int) -> Int
+pub fn lz4_compress_fast_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, Int) -> Int
 
-pub fn lz4_compress_fast_ext_state(@c.Pointer[Unit], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, Int) -> Int
+pub fn lz4_compress_fast_ext_state(@c.Pointer[Unit], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, Int) -> Int
 
-pub fn lz4_compress_limited_output(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_compress_limited_output(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_compress_limited_output_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_compress_limited_output_continue(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_compress_limited_output_with_state(@c.Pointer[Unit], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_compress_limited_output_with_state(@c.Pointer[Unit], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_compress_with_state(@c.Pointer[Unit], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_compress_with_state(@c.Pointer[Unit], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_create(@c.Pointer[@c.CChar]) -> @c.Pointer[Unit]
+pub fn lz4_create(@c.Pointer[Byte]) -> @c.Pointer[Unit]
 
 pub fn lz4_create_stream() -> @c.Pointer[Lz4StreamU]
 
@@ -152,25 +152,25 @@ pub fn lz4_create_stream_decode() -> @c.Pointer[Lz4StreamDecodeU]
 
 pub fn lz4_decoder_ring_buffer_size(Int) -> Int
 
-pub fn lz4_decompress_fast(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_fast(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_fast_continue(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_fast_continue(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_fast_using_dict(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_fast_using_dict(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, @c.ReadOnlyPointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_fast_with_prefix64k(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_fast_with_prefix64k(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_safe(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_decompress_safe(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_decompress_safe_continue(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_decompress_safe_continue(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
-pub fn lz4_decompress_safe_partial(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, Int) -> Int
+pub fn lz4_decompress_safe_partial(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, Int) -> Int
 
-pub fn lz4_decompress_safe_partial_using_dict(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, Int, @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_safe_partial_using_dict(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, Int, @c.ReadOnlyPointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_safe_using_dict(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int, @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_decompress_safe_using_dict(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int, @c.ReadOnlyPointer[Byte], Int) -> Int
 
-pub fn lz4_decompress_safe_with_prefix64k(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_decompress_safe_with_prefix64k(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
 pub fn lz4_free_stream(@c.Pointer[Lz4StreamU]) -> Int
 
@@ -178,35 +178,35 @@ pub fn lz4_free_stream_decode(@c.Pointer[Lz4StreamDecodeU]) -> Int
 
 pub fn lz4_init_stream(@c.Pointer[Unit], UInt64) -> @c.Pointer[Lz4StreamU]
 
-pub fn lz4_load_dict(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_load_dict(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Byte], Int) -> Int
 
-pub fn lz4_load_dict_slow(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_load_dict_slow(@c.Pointer[Lz4StreamU], @c.ReadOnlyPointer[Byte], Int) -> Int
 
 pub fn lz4_reset_stream(@c.Pointer[Lz4StreamU]) -> Unit
 
 pub fn lz4_reset_stream_fast(@c.Pointer[Lz4StreamU]) -> Unit
 
-pub fn lz4_reset_stream_state(@c.Pointer[Unit], @c.Pointer[@c.CChar]) -> Int
+pub fn lz4_reset_stream_state(@c.Pointer[Unit], @c.Pointer[Byte]) -> Int
 
-pub fn lz4_save_dict(@c.Pointer[Lz4StreamU], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_save_dict(@c.Pointer[Lz4StreamU], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_set_stream_decode(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[@c.CChar], Int) -> Int
+pub fn lz4_set_stream_decode(@c.Pointer[Lz4StreamDecodeU], @c.ReadOnlyPointer[Byte], Int) -> Int
 
 pub fn lz4_sizeof_state() -> Int
 
 pub fn lz4_sizeof_stream_state() -> Int
 
-pub fn lz4_slide_input_buffer(@c.Pointer[Unit]) -> @c.Pointer[@c.CChar]
+pub fn lz4_slide_input_buffer(@c.Pointer[Unit]) -> @c.Pointer[Byte]
 
-pub fn lz4_uncompress(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int) -> Int
+pub fn lz4_uncompress(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int) -> Int
 
-pub fn lz4_uncompress_unknown_output_size(@c.ReadOnlyPointer[@c.CChar], @c.Pointer[@c.CChar], Int, Int) -> Int
+pub fn lz4_uncompress_unknown_output_size(@c.ReadOnlyPointer[Byte], @c.Pointer[Byte], Int, Int) -> Int
 
 pub fn lz4_version_number() -> Int
 
-pub fn lz4_version_string() -> @c.ReadOnlyPointer[@c.CChar]
+pub fn lz4_version_string() -> @c.ReadOnlyPointer[Byte]
 
-pub fn test_byte_pointer(@c.Pointer[@c.ReadOnlyPointer[Byte]], @c.Pointer[@c.CSize]) -> Unit
+pub fn test_byte_pointer(@c.Pointer[@c.ReadOnlyPointer[Byte]], @c.Pointer[UInt64]) -> Unit
 
 pub fn test_context_create(@c.Pointer[@c.Pointer[TestContext]]) -> Unit
 

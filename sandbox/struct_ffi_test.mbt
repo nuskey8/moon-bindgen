@@ -1,23 +1,26 @@
 ///|
-fn uint64_array_as_csize_array(
-  values : FixedArray[UInt64],
-) -> FixedArray[@c.CSize] = "%identity"
-
-///|
 fn byte_pointer_outputs() -> (
   FixedArray[@c.ReadOnlyPointer[Byte]],
-  @c.Pointer[@c.CSize],
+  UInt64,
 ) {
   let pointers : FixedArray[@c.ReadOnlyPointer[Byte]] = [
     @c.ReadOnlyPointer::null(),
   ]
-  let lengths = uint64_array_as_csize_array([0UL])
-  let length_pointer = @c.CSizeArrayAsPointer::as_pointer(lengths)
-  test_byte_pointer(
-    @c.ReadOnlyPointerArray::as_pointer(pointers),
-    length_pointer,
+  let lengths : FixedArray[@c.CSize] = [0UL]
+  @c.ReadOnlyPointerArray::with_pointer(
+    pointers,
+    fn(pointer) {
+      @c.CSizeArrayAsPointer::with_pointer(
+        lengths,
+        fn(length) { test_byte_pointer(pointer, length) },
+      )
+    },
   )
-  (pointers, length_pointer)
+  let length = @c.CSizeArrayAsPointer::with_pointer(
+    lengths,
+    fn(pointer) { pointer.as_readonly().read_size() },
+  )
+  (pointers, length)
 }
 
 ///|
@@ -55,7 +58,7 @@ test "pointer field in an input struct" {
   let (pointers, length) = byte_pointer_outputs()
   let slice = TestSlice::{
     data: pointers[0],
-    len: length.as_readonly().read_size(),
+    len: length,
   }
   assert_eq(test_slice_sum(slice), 10U)
 }
@@ -86,7 +89,10 @@ test "triple pointer updates the deepest external context" {
 ///|
 test "double pointer to a primitive" {
   let values : FixedArray[@c.Pointer[Int]] = [@c.Pointer::null()]
-  test_int_pointer(@c.PointerArray::as_pointer(values))
+  @c.PointerArray::with_pointer(
+    values,
+    fn(pointer) { test_int_pointer(pointer) },
+  )
   let value = values[0]
   assert_eq(value.as_readonly().read_int32(), 42)
   value.write_int32(99)
@@ -96,6 +102,6 @@ test "double pointer to a primitive" {
 ///|
 test "double pointer to borrowed bytes" {
   let (pointers, length) = byte_pointer_outputs()
-  assert_eq(length.as_readonly().read_size(), 4UL)
+  assert_eq(length, 4UL)
   assert_eq(pointers[0].read_uint8(), 1)
 }
