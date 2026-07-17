@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef struct moon_bindgen_c_TestContext moon_bindgen_c_TestContext;
 typedef struct moon_bindgen_c_TestLine moon_bindgen_c_TestLine;
 typedef struct moon_bindgen_c_TestPoint moon_bindgen_c_TestPoint;
 typedef struct moon_bindgen_c_TestSlice moon_bindgen_c_TestSlice;

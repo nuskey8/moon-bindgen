@@ -13,6 +13,7 @@ pub(crate) struct Model {
 pub(crate) struct Function {
     pub rust_name: String,
     pub symbol: String,
+    pub from_bindgen: bool,
     pub params: Vec<(String, Type)>,
     pub result: Type,
     pub variadic: bool,
@@ -23,6 +24,7 @@ pub(crate) struct Struct {
     pub name: String,
     pub is_union: bool,
     pub is_opaque: bool,
+    pub from_bindgen: bool,
     pub fields: Vec<Field>,
 }
 

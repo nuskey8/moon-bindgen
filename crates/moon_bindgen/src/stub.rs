@@ -81,7 +81,11 @@ pub(crate) fn render(
         .filter(|name| {
             !value_structs.contains(*name)
                 && type_filter((*name).clone())
-                && struct_supported(name, model, &mut vec![])
+                && (if model.structs[*name].from_bindgen {
+                    native_struct_constructible(name, model)
+                } else {
+                    struct_supported(name, model, &mut vec![])
+                })
                 && struct_dependencies_allowed(name, model, type_filter, &mut vec![])
         })
         .cloned()
@@ -96,11 +100,9 @@ pub(crate) fn render(
         if !function_filter(function.rust_name.clone()) || function.variadic {
             continue;
         }
-        let needs_stub = function
-            .params
-            .iter()
-            .any(|(_, ty)| by_value_struct(ty, model).is_some())
-            || by_value_struct(&function.result, model).is_some();
+        let needs_stub = function.params.iter().any(|(_, ty)| {
+            by_value_struct(ty, model).is_some() || pointer_to_native_struct(ty, model).is_some()
+        }) || by_value_struct(&function.result, model).is_some();
         if !needs_stub {
             continue;
         }
@@ -119,24 +121,38 @@ pub(crate) fn render(
     }
 
     let mut c_types = String::new();
-    for structure in model.structs.values() {
-        c_types.push_str(&format!(
-            "typedef {} moon_bindgen_c_{} moon_bindgen_c_{};\n",
-            if structure.is_union {
-                "union"
-            } else {
-                "struct"
-            },
-            structure.name,
-            structure.name
-        ));
+    let mut c_type_names = value_structs.clone();
+    for name in &constructible_structs {
+        collect_struct_dependencies(name, model, &mut c_type_names);
     }
-    if !model.structs.is_empty() {
+    for name in &c_type_names {
+        let structure = &model.structs[name];
+        if structure.from_bindgen {
+            c_types.push_str(&format!(
+                "typedef {} moon_bindgen_c_{};\n",
+                structure.name, structure.name
+            ));
+        } else {
+            c_types.push_str(&format!(
+                "typedef {} moon_bindgen_c_{} moon_bindgen_c_{};\n",
+                if structure.is_union {
+                    "union"
+                } else {
+                    "struct"
+                },
+                structure.name,
+                structure.name
+            ));
+        }
+    }
+    if !c_type_names.is_empty() {
         c_types.push('\n');
     }
     let mut emitted = BTreeSet::new();
     for name in value_structs.iter().chain(&constructible_structs) {
-        emit_c_struct(name, model, &mut emitted, &mut c_types);
+        if !model.structs[name].from_bindgen {
+            emit_c_struct(name, model, &mut emitted, &mut c_types);
+        }
     }
     let mut constructors_moon = String::new();
     let mut constructors_c = String::new();
@@ -146,7 +162,9 @@ pub(crate) fn render(
     let mut getters_moon = String::new();
     let mut getters_c = String::new();
     for name in result_structs {
-        emit_result_helpers(&name, &ctx, &mut getters_moon, &mut getters_c);
+        if !model.structs[&name].from_bindgen {
+            emit_result_helpers(&name, &ctx, &mut getters_moon, &mut getters_c);
+        }
     }
     moonbit_functions = format!("{constructors_moon}{getters_moon}{moonbit_functions}");
     let c_source = if wrapped_symbols.is_empty() && constructible_structs.is_empty() {
@@ -317,6 +335,13 @@ fn emit_field_accessors(
 
 fn emit_moonbit_struct(out: &mut String, structure: &Struct, ctx: &Context<'_>) {
     let ty = type_name(&structure.name, ctx.type_rename);
+    if structure.from_bindgen {
+        out.push_str(&format!(
+            "///|\n#external\n{}type {ty} // native C layout\n\n",
+            ctx.visibility.prefix()
+        ));
+        return;
+    }
     out.push_str(&format!(
         "///|\n{}struct {} {{\n",
         match ctx.visibility {
@@ -366,11 +391,51 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
 
     for (param_name, ty) in &function.params {
         let safe_param = value_name(param_name);
+        let native_pointer = pointer_to_native_struct(ty, ctx.model);
         wrapper_params.push(format!(
             "{safe_param} : {}",
-            moon_type(ty, ctx.model, ctx.type_rename).unwrap()
+            native_pointer.map_or_else(
+                || moon_type(ty, ctx.model, ctx.type_rename).unwrap(),
+                |name| type_name(name, ctx.type_rename),
+            )
         ));
+        if let Some(struct_name) = native_pointer {
+            let moon_ty = type_name(struct_name, ctx.type_rename);
+            shim_params.push((
+                safe_param.clone(),
+                moon_ty,
+                false,
+                Some((ctx.ownership_resolver)(&function.rust_name, param_name)),
+            ));
+            call_args.push(safe_param.clone());
+            c_params.push(format!("void *{safe_param}"));
+            c_call_args.push(format!(
+                "({}moon_bindgen_c_{struct_name} *){safe_param}",
+                if matches!(
+                    resolve_alias(ty, ctx.model),
+                    Type::Pointer { mutable: false, .. }
+                ) {
+                    "const "
+                } else {
+                    ""
+                }
+            ));
+            continue;
+        }
         if let Some(struct_name) = by_value_struct(ty, ctx.model) {
+            if ctx.model.structs[struct_name].from_bindgen {
+                let moon_ty = type_name(struct_name, ctx.type_rename);
+                shim_params.push((
+                    safe_param.clone(),
+                    moon_ty,
+                    false,
+                    Some((ctx.ownership_resolver)(&function.rust_name, param_name)),
+                ));
+                call_args.push(safe_param.clone());
+                c_params.push(format!("void *{safe_param}"));
+                c_call_args.push(format!("*(moon_bindgen_c_{struct_name} *){safe_param}"));
+                continue;
+            }
             let local = format!("moon_bindgen_arg_{safe_param}");
             c_locals.push_str(&format!("  moon_bindgen_c_{struct_name} {local};\n"));
             let leaves = struct_leaves(struct_name, ctx.model);
@@ -416,13 +481,25 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
                 "{} {safe_param}",
                 c_abi_type(ty, ctx.model).unwrap()
             ));
-            c_call_args.push(c_call_expr(&safe_param, ty, ctx.model));
+            c_call_args.push(
+                if function.from_bindgen
+                    && matches!(resolve_alias(ty, ctx.model), Type::Pointer { .. })
+                {
+                    safe_param.clone()
+                } else {
+                    c_call_expr(&safe_param, ty, ctx.model)
+                },
+            );
         }
     }
 
     let result_struct = by_value_struct(&function.result, ctx.model);
     let shim_result = if let Some(name) = result_struct {
-        repr_name(name, ctx.type_rename)
+        if ctx.model.structs[name].from_bindgen {
+            type_name(name, ctx.type_rename)
+        } else {
+            repr_name(name, ctx.type_rename)
+        }
     } else {
         moon_type(&function.result, ctx.model, ctx.type_rename).unwrap()
     };
@@ -448,39 +525,47 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
         wrapper_params.join(", ")
     ));
     let public_result = moon_type(&function.result, ctx.model, ctx.type_rename).unwrap();
-    if public_result != "Unit" {
-        moon.push_str(&format!(" -> {public_result}"));
-    }
+    moon.push_str(&format!(" -> {public_result}"));
     moon.push_str(" {\n");
     for validation in validations {
         moon.push_str(&validation);
     }
     if let Some(name) = result_struct {
-        moon.push_str(&format!(
-            "  let result = {shim}({})\n",
-            call_args.join(", ")
-        ));
-        moon.push_str("  ");
-        moon.push_str(&construct_struct(name, name, &[], "result", ctx, 1));
-        moon.push('\n');
+        if ctx.model.structs[name].from_bindgen {
+            moon.push_str(&format!("  {shim}({})\n", call_args.join(", ")));
+        } else {
+            moon.push_str(&format!(
+                "  let result = {shim}({})\n",
+                call_args.join(", ")
+            ));
+            moon.push_str("  ");
+            moon.push_str(&construct_struct(name, name, &[], "result", ctx, 1));
+            moon.push('\n');
+        }
     } else {
         moon.push_str(&format!("  {shim}({})\n", call_args.join(", ")));
     }
     moon.push_str("}\n\n");
 
     let original_result = c_type(&function.result, ctx.model).unwrap();
-    c.push_str(&format!(
-        "extern {original_result} {}({});\n",
-        function.symbol,
-        function
-            .params
-            .iter()
-            .map(|(name, ty)| c_decl(ty, name, ctx.model).unwrap())
-            .collect::<Vec<_>>()
-            .join(", ")
-    ));
+    if !function.from_bindgen {
+        c.push_str(&format!(
+            "extern {original_result} {}({});\n",
+            function.symbol,
+            function
+                .params
+                .iter()
+                .map(|(name, ty)| c_decl(ty, name, ctx.model).unwrap())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
     let wrapper_result = if result_struct.is_some() {
-        "moonbit_bytes_t".to_owned()
+        if result_struct.is_some_and(|name| ctx.model.structs[name].from_bindgen) {
+            "void *".to_owned()
+        } else {
+            "moonbit_bytes_t".to_owned()
+        }
     } else {
         c_abi_type(&function.result, ctx.model).unwrap()
     };
@@ -490,9 +575,15 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
     ));
     let call = format!("{}({})", function.symbol, c_call_args.join(", "));
     if let Some(name) = result_struct {
-        c.push_str(&format!(
-            "  moon_bindgen_c_{name} result = {call};\n  moonbit_bytes_t bytes = moonbit_make_bytes((int32_t)sizeof(result), 0);\n  memcpy(bytes, &result, sizeof(result));\n  return bytes;\n"
-        ));
+        if ctx.model.structs[name].from_bindgen {
+            c.push_str(&format!(
+                "  moon_bindgen_c_{name} *result = (moon_bindgen_c_{name} *)moonbit_make_external_object(NULL, sizeof(moon_bindgen_c_{name}));\n  *result = {call};\n  return result;\n"
+            ));
+        } else {
+            c.push_str(&format!(
+                "  moon_bindgen_c_{name} result = {call};\n  moonbit_bytes_t bytes = moonbit_make_bytes((int32_t)sizeof(result), 0);\n  memcpy(bytes, &result, sizeof(result));\n  return bytes;\n"
+            ));
+        }
     } else if matches!(resolve_alias(&function.result, ctx.model), Type::Unit) {
         c.push_str(&format!("  {call};\n"));
     } else {
@@ -633,6 +724,9 @@ fn wrapper_supported(function: &Function, values: &BTreeSet<String>, model: &Mod
 }
 
 fn struct_result_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool {
+    if model.structs[name].from_bindgen {
+        return true;
+    }
     if model.structs[name].is_opaque || stack.iter().any(|item| item == name) {
         return false;
     }
@@ -658,6 +752,9 @@ fn struct_dependencies_allowed(
     type_filter: fn(String) -> bool,
     stack: &mut Vec<String>,
 ) -> bool {
+    if model.structs[name].from_bindgen {
+        return type_filter(name.to_owned());
+    }
     if model.structs[name].is_opaque
         || stack.iter().any(|item| item == name)
         || !type_filter(name.to_owned())
@@ -675,6 +772,9 @@ fn struct_dependencies_allowed(
 
 fn collect_struct_dependencies(name: &str, model: &Model, out: &mut BTreeSet<String>) {
     if !out.insert(name.to_owned()) {
+        return;
+    }
+    if model.structs[name].from_bindgen {
         return;
     }
     for field in &model.structs[name].fields {
@@ -701,6 +801,9 @@ fn struct_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool 
     let Some(structure) = model.structs.get(name) else {
         return false;
     };
+    if structure.from_bindgen {
+        return true;
+    }
     if structure.is_union
         || structure.is_opaque
         || structure.fields.is_empty()
@@ -728,6 +831,25 @@ fn struct_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool 
     supported
 }
 
+fn native_struct_constructible(name: &str, model: &Model) -> bool {
+    let structure = &model.structs[name];
+    !structure.is_union
+        && !structure.is_opaque
+        && !structure.fields.is_empty()
+        && structure.fields.iter().all(|field| match resolve_alias(&field.ty, model) {
+            Type::Path(path) => primitive_c_type(last(path)).is_some(),
+            Type::Pointer { inner, .. } => pointer_pointee_supported(inner, model),
+            Type::Array {
+                inner,
+                len: Some(len),
+            } => {
+                *len > 0
+                    && matches!(resolve_alias(inner, model), Type::Path(path) if primitive_c_type(last(path)).is_some())
+            }
+            _ => false,
+        })
+}
+
 fn struct_leaves(name: &str, model: &Model) -> Vec<Leaf> {
     fn visit(name: &str, model: &Model, prefix: &mut Vec<String>, out: &mut Vec<Leaf>) {
         for field in &model.structs[name].fields {
@@ -753,6 +875,21 @@ fn by_value_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
         Type::Path(path) if model.structs.contains_key(last(path)) => Some(last(path)),
         _ => None,
     }
+}
+
+fn pointer_to_native_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
+    let Type::Pointer { inner, .. } = resolve_alias(ty, model) else {
+        return None;
+    };
+    let Type::Path(path) = resolve_alias(inner, model) else {
+        return None;
+    };
+    let name = last(path);
+    model
+        .structs
+        .get(name)
+        .is_some_and(|structure| structure.from_bindgen && native_struct_constructible(name, model))
+        .then_some(name)
 }
 
 fn resolve_alias<'a>(ty: &'a Type, model: &'a Model) -> &'a Type {
