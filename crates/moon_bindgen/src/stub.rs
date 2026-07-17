@@ -633,7 +633,7 @@ fn wrapper_supported(function: &Function, values: &BTreeSet<String>, model: &Mod
 }
 
 fn struct_result_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool {
-    if stack.iter().any(|item| item == name) {
+    if model.structs[name].is_opaque || stack.iter().any(|item| item == name) {
         return false;
     }
     stack.push(name.to_owned());
@@ -658,7 +658,10 @@ fn struct_dependencies_allowed(
     type_filter: fn(String) -> bool,
     stack: &mut Vec<String>,
 ) -> bool {
-    if stack.iter().any(|item| item == name) || !type_filter(name.to_owned()) {
+    if model.structs[name].is_opaque
+        || stack.iter().any(|item| item == name)
+        || !type_filter(name.to_owned())
+    {
         return false;
     }
     stack.push(name.to_owned());
@@ -698,7 +701,11 @@ fn struct_supported(name: &str, model: &Model, stack: &mut Vec<String>) -> bool 
     let Some(structure) = model.structs.get(name) else {
         return false;
     };
-    if structure.is_union || structure.fields.is_empty() || stack.iter().any(|item| item == name) {
+    if structure.is_union
+        || structure.is_opaque
+        || structure.fields.is_empty()
+        || stack.iter().any(|item| item == name)
+    {
         return false;
     }
     stack.push(name.to_owned());
