@@ -13,7 +13,7 @@ moon-bindgenが生成するFFIのコードは[`C.mbt`](https://github.com/nuskey
 
 ```moonbit
 // moon.mod
-import { "nuskey8/c@0.3.1" }
+import { "nuskey8/c@0.3.2" }
 
 // moon.pkg
 import { "nuskey8/c" @c }
