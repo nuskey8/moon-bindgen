@@ -12,7 +12,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     moon_bindgen::Builder::default()
         .input_extern_file("src/struct_ffi.rs")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
-        .c_stub_file_header("#include <stddef.h>")
         .generate()?
         .write_to_file("../struct_ffi.mbt", "../struct_ffi_stub.c")?;
 

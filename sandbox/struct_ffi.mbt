@@ -26,11 +26,11 @@ pub fn TestPoint::new(x : Int, y : Int, rgba : FixedArray[Byte]) -> TestPoint {
 ///|
 pub(all) struct TestSlice {
   data : @c.ReadOnlyPointer[@c.CUInt8]
-  len : UInt64
+  len : @c.CSize
 }
 
 ///|
-pub fn TestSlice::new(data : @c.ReadOnlyPointer[@c.CUInt8], len : UInt64) -> TestSlice {
+pub fn TestSlice::new(data : @c.ReadOnlyPointer[@c.CUInt8], len : @c.CSize) -> TestSlice {
   TestSlice::{ data, len }
 }
 
@@ -147,7 +147,7 @@ pub fn test_point_translate(point : TestPoint, dx : Int, dy : Int) -> TestPoint 
 }
 
 #borrow(slice_data)
-extern "c" fn moon_bindgen_test_slice_sum(slice_data : @c.ReadOnlyPointer[@c.CUInt8], slice_len : UInt64) -> UInt = "moon_bindgen_test_slice_sum"
+extern "c" fn moon_bindgen_test_slice_sum(slice_data : @c.ReadOnlyPointer[@c.CUInt8], slice_len : @c.CSize) -> UInt = "moon_bindgen_test_slice_sum"
 
 ///|
 pub fn test_slice_sum(slice : TestSlice) -> UInt {
