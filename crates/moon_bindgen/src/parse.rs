@@ -31,6 +31,7 @@ fn collect_items(items: &[Item], model: &mut Model, from_bindgen: bool) {
                             .iter()
                             .any(|field| is_bindgen_opaque_field(&field.name)),
                         from_bindgen,
+                        docs: doc_text(&s.attrs),
                         fields,
                     },
                 );
@@ -46,12 +47,16 @@ fn collect_items(items: &[Item], model: &mut Model, from_bindgen: bool) {
                             .iter()
                             .any(|field| is_bindgen_opaque_field(&field.name)),
                         from_bindgen,
+                        docs: doc_text(&s.attrs),
                         fields,
                     },
                 );
             }
             Item::Type(t) => {
                 model.aliases.insert(t.ident.to_string(), parse_type(&t.ty));
+                model
+                    .alias_docs
+                    .insert(t.ident.to_string(), doc_text(&t.attrs));
             }
             Item::Const(c) => {
                 if let Some(value) = expr_text(&c.expr) {
@@ -60,6 +65,7 @@ fn collect_items(items: &[Item], model: &mut Model, from_bindgen: bool) {
                         Constant {
                             ty: parse_type(&c.ty),
                             value,
+                            docs: doc_text(&c.attrs),
                         },
                     );
                 }
@@ -96,6 +102,7 @@ fn collect_fn(sig: &syn::Signature, attrs: &[Attribute], model: &mut Model, from
             rust_name,
             symbol,
             from_bindgen,
+            docs: doc_text(attrs),
             params,
             result,
             variadic: sig.variadic.is_some(),
@@ -169,8 +176,56 @@ fn collect_fields(fields: &syn::Fields) -> Vec<Field> {
                 .map(ToString::to_string)
                 .unwrap_or_else(|| format!("_{index}")),
             ty: parse_type(&field.ty),
+            docs: doc_text(&field.attrs),
         })
         .collect()
+}
+
+fn doc_text(attrs: &[Attribute]) -> Vec<String> {
+    let mut docs = attrs
+        .iter()
+        .filter_map(|attr| {
+            if !attr.path().is_ident("doc") {
+                return None;
+            }
+            let Meta::NameValue(value) = &attr.meta else {
+                return None;
+            };
+            let Expr::Lit(value) = &value.value else {
+                return None;
+            };
+            let Lit::Str(value) = &value.lit else {
+                return None;
+            };
+            Some(value.value())
+        })
+        .flat_map(|line| {
+            if line.is_empty() {
+                return vec![String::new()];
+            }
+            let block = line.contains('\n');
+            line.lines()
+                .map(|line| {
+                    let line = line.strip_prefix(' ').unwrap_or(line);
+                    let line = if block {
+                        line.strip_prefix('*')
+                            .map(|line| line.strip_prefix(' ').unwrap_or(line))
+                            .unwrap_or(line)
+                    } else {
+                        line
+                    };
+                    line.to_owned()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    while docs.first().is_some_and(String::is_empty) {
+        docs.remove(0);
+    }
+    while docs.last().is_some_and(String::is_empty) {
+        docs.pop();
+    }
+    docs
 }
 
 fn is_bindgen_opaque_field(name: &str) -> bool {

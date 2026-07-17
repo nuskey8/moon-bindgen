@@ -38,24 +38,32 @@ pub fn TestSlice::new(data : @c.ReadOnlyPointer[@c.CUInt8], len : @c.CSize) -> T
 #external
 pub type TestContext // #[repr(C)] struct
 
+///|
 #borrow(out, out_len)
 pub extern "c" fn test_byte_pointer(out : @c.Pointer[@c.ReadOnlyPointer[@c.CUInt8]], out_len : @c.Pointer[@c.CSize]) = "test_byte_pointer"
 
+///|
 #borrow(out)
 pub extern "c" fn test_context_create(out : @c.Pointer[@c.Pointer[TestContext]]) = "test_context_create"
 
+///|
 pub extern "c" fn test_context_null() -> @c.Pointer[TestContext] = "test_context_null"
 
+///|
 #borrow(out)
 pub extern "c" fn test_context_pointer_pointer(out : @c.Pointer[@c.Pointer[@c.Pointer[TestContext]]]) = "test_context_pointer_pointer"
 
+///|
 pub extern "c" fn test_context_ptr() -> @c.Pointer[@c.Pointer[TestContext]] = "test_context_ptr"
 
+///|
 pub extern "c" fn test_context_ptr_ptr() -> @c.Pointer[@c.Pointer[@c.Pointer[TestContext]]] = "test_context_ptr_ptr"
 
+///|
 #borrow(context)
 pub extern "c" fn test_context_value(context : @c.ReadOnlyPointer[TestContext]) -> Int = "test_context_value"
 
+///|
 #borrow(out)
 pub extern "c" fn test_int_pointer(out : @c.Pointer[@c.Pointer[@c.CInt32]]) = "test_int_pointer"
 

@@ -63,7 +63,14 @@ pub(crate) fn render(
             && !model.aliases.contains_key(&name)
             && !model.structs.contains_key(&name)
         {
-            emit_external_type(&mut out, &name, "opaque C type", visibility, type_rename);
+            emit_external_type(
+                &mut out,
+                &name,
+                "opaque C type",
+                &[],
+                visibility,
+                type_rename,
+            );
         }
     }
     for s in model.structs.values() {
@@ -78,6 +85,7 @@ pub(crate) fn render(
             } else {
                 "#[repr(C)] struct"
             },
+            &s.docs,
             visibility,
             type_rename,
         );
@@ -87,8 +95,12 @@ pub(crate) fn render(
             continue;
         }
         if let Some(ty) = moon_alias_type(name, alias, model, type_filter, type_rename) {
+            emit_doc(
+                &mut out,
+                model.alias_docs.get(name).map(Vec::as_slice).unwrap_or(&[]),
+            );
             out.push_str(&format!(
-                "///|\n{}type {} = {}\n\n",
+                "{}type {} = {}\n\n",
                 visibility.prefix(),
                 renamed_type_ident(name, type_rename),
                 ty
@@ -100,8 +112,9 @@ pub(crate) fn render(
             continue;
         }
         if let Some(ty) = moon_type(&c.ty, type_rename) {
+            emit_doc(&mut out, &c.docs);
             out.push_str(&format!(
-                "///|\n{}const {} : {} = {}\n\n",
+                "{}const {} : {} = {}\n\n",
                 visibility.prefix(),
                 renamed_constant_ident(name, constant_rename),
                 ty,
@@ -174,6 +187,7 @@ pub(crate) fn render(
             .filter(|(_, ownership)| *ownership == Ownership::Borrow)
             .map(|(name, _)| name.as_str())
             .collect::<Vec<_>>();
+        emit_doc(&mut out, &f.docs);
         if !borrowed.is_empty() {
             out.push_str(&format!("#borrow({})\n", borrowed.join(", ")));
         }
@@ -247,15 +261,30 @@ fn emit_external_type(
     out: &mut String,
     name: &str,
     note: &str,
+    docs: &[String],
     visibility: Visibility,
     type_rename: fn(String) -> String,
 ) {
+    emit_doc(out, docs);
     out.push_str(&format!(
-        "///|\n#external\n{}type {} // {}\n\n",
+        "#external\n{}type {} // {}\n\n",
         visibility.prefix(),
         renamed_type_ident(name, type_rename),
         note
     ));
+}
+
+pub(crate) fn emit_doc(out: &mut String, docs: &[String]) {
+    out.push_str("///|\n");
+    for line in docs {
+        if line.is_empty() {
+            out.push_str("///\n");
+        } else {
+            out.push_str("/// ");
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
 }
 
 fn moon_type(ty: &Type, type_rename: fn(String) -> String) -> Option<String> {
@@ -1524,5 +1553,72 @@ unsafe extern "C" {
         assert!(stub.contains("value->from = from;"));
         assert!(stub.contains("(const moon_bindgen_c_RecvInfo *)info"));
         assert!(!stub.contains("struct moon_bindgen_c_RecvInfo {"));
+    }
+
+    #[test]
+    fn preserves_rust_doc_comments_in_generated_moonbit() {
+        let f = syn::parse_file(
+            r#"
+/// Number of packets.
+pub type packet_count_t = u64;
+
+/** Default packet count.
+ *
+ * Used when no limit is configured.
+ */
+pub const DEFAULT_PACKETS: packet_count_t = 4;
+
+/// Information about a received packet.
+#[repr(C)]
+pub struct recv_info {
+  /// Source address pointer.
+  pub from: *mut u8,
+  /// Source address length.
+  pub from_len: u32,
+}
+
+unsafe extern "C" {
+  /// Returns the library version.
+  pub fn library_version() -> u32;
+
+  /// Processes one received packet.
+  ///
+  /// Returns zero on success.
+  pub fn receive_packet(info: *const recv_info) -> i32;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+        let moon = b.moonbit_source();
+
+        assert!(moon.contains("/// Number of packets.\npub type PacketCountT = UInt64"));
+        assert!(moon.contains(
+            "/// Default packet count.\n///\n/// Used when no limit is configured.\npub const DEFAULT_PACKETS"
+        ), "{moon}");
+        assert!(
+            moon.contains("/// Information about a received packet.\n#external\npub type RecvInfo")
+        );
+        assert!(moon.contains("/// Source address pointer.\npub fn RecvInfo::get_from"));
+        assert!(
+            moon.contains("/// Returns the library version.\npub extern \"c\" fn library_version")
+        );
+        assert!(moon.contains(
+            "/// Processes one received packet.\n///\n/// Returns zero on success.\npub fn receive_packet"
+        ));
     }
 }

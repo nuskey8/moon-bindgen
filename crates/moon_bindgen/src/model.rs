@@ -5,6 +5,7 @@ pub(crate) struct Model {
     pub functions: BTreeMap<String, Function>,
     pub structs: BTreeMap<String, Struct>,
     pub aliases: BTreeMap<String, Type>,
+    pub alias_docs: BTreeMap<String, Vec<String>>,
     pub constants: BTreeMap<String, Constant>,
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -14,6 +15,7 @@ pub(crate) struct Function {
     pub rust_name: String,
     pub symbol: String,
     pub from_bindgen: bool,
+    pub docs: Vec<String>,
     pub params: Vec<(String, Type)>,
     pub result: Type,
     pub variadic: bool,
@@ -25,6 +27,7 @@ pub(crate) struct Struct {
     pub is_union: bool,
     pub is_opaque: bool,
     pub from_bindgen: bool,
+    pub docs: Vec<String>,
     pub fields: Vec<Field>,
 }
 
@@ -32,6 +35,7 @@ pub(crate) struct Struct {
 pub(crate) struct Field {
     pub name: String,
     pub ty: Type,
+    pub docs: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -58,6 +62,7 @@ pub(crate) enum Type {
 pub(crate) struct Constant {
     pub ty: Type,
     pub value: String,
+    pub docs: Vec<String>,
 }
 
 pub struct Bindings {
