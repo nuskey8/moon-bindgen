@@ -162,6 +162,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .c_stub_file_header("#include \"library.h\"")
         .c_stub_file_footer("// end of generated adapters")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
+        .moonbit_prefer_managed_types(true)
         .function_filter(|name| !name.starts_with("_"))
         .type_filter(|name| !name.starts_with("_"))
         .constant_filter(|name| !name.starts_with("_"))

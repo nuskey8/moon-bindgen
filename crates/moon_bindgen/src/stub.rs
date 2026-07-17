@@ -19,6 +19,7 @@ struct Context<'a> {
     ownership_resolver: &'a dyn Fn(&str, &str) -> Ownership,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
+    prefer_managed_types: bool,
 }
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ pub(crate) fn render(
     ownership_resolver: &dyn Fn(&str, &str) -> Ownership,
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
+    prefer_managed_types: bool,
 ) -> StubOutput {
     let ctx = Context {
         model,
@@ -44,6 +46,7 @@ pub(crate) fn render(
         ownership_resolver,
         function_rename,
         type_rename,
+        prefer_managed_types,
     };
     let mut candidates = BTreeSet::new();
     for function in model.functions.values() {
@@ -412,7 +415,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
         wrapper_params.push(format!(
             "{safe_param} : {}",
             native_pointer.map_or_else(
-                || moon_type(ty, ctx.model, ctx.type_rename).unwrap(),
+                || moon_parameter_type(ty, ctx).unwrap(),
                 |name| type_name(name, ctx.type_rename),
             )
         ));
@@ -486,7 +489,7 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
             }
             c_call_args.push(local);
         } else {
-            let moon_ty = moon_type(ty, ctx.model, ctx.type_rename).unwrap();
+            let moon_ty = moon_parameter_type(ty, ctx).unwrap();
             let ownership = if needs_ownership(ty) {
                 Some((ctx.ownership_resolver)(&function.rust_name, param_name))
             } else {
@@ -961,6 +964,15 @@ fn moon_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<S
         }
         _ => None,
     }
+}
+
+fn moon_parameter_type(ty: &Type, ctx: &Context<'_>) -> Option<String> {
+    if ctx.prefer_managed_types
+        && let Some(ty) = crate::generate::managed_byte_pointer_type(ty, ctx.model)
+    {
+        return Some(ty.into());
+    }
+    moon_type(ty, ctx.model, ctx.type_rename)
 }
 
 fn moon_pointee_type(ty: &Type, model: &Model, rename: fn(String) -> String) -> Option<String> {
