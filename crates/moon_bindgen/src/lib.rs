@@ -28,6 +28,7 @@ pub struct Builder {
     function_rename: fn(String) -> String,
     type_rename: fn(String) -> String,
     constant_rename: fn(String) -> String,
+    prefer_managed_types: bool,
 }
 
 impl Default for Builder {
@@ -47,6 +48,7 @@ impl Default for Builder {
             function_rename: |name| name.to_snake_case(),
             type_rename: |name| name.to_upper_camel_case(),
             constant_rename: |name| name.to_shouty_snake_case(),
+            prefer_managed_types: false,
         }
     }
 }
@@ -121,6 +123,15 @@ impl Builder {
     /// Sets the visibility of all generated types, functions, and constants.
     pub fn moonbit_visibility(mut self, visibility: Visibility) -> Self {
         self.visibility = visibility;
+        self
+    }
+
+    /// Prefers MoonBit-managed FFI parameter types where their C ABI and
+    /// lifetime semantics are compatible. Currently, read-only byte and char
+    /// pointers become `Bytes`, while writable byte and char pointers become
+    /// `FixedArray[Byte]`.
+    pub fn moonbit_prefer_managed_types(mut self, prefer: bool) -> Self {
+        self.prefer_managed_types = prefer;
         self
     }
 
@@ -206,6 +217,7 @@ impl Builder {
             self.function_rename,
             self.type_rename,
             self.constant_rename,
+            self.prefer_managed_types,
         )
         .with_c_stub_affixes(&self.c_stub_header, &self.c_stub_footer))
     }
@@ -302,6 +314,43 @@ unsafe extern "C" { pub fn round_trip(value: Value) -> Value; }
         assert!(!pointers.moonbit_source().contains("type Ptr[T]"));
         assert!(!pointers.moonbit_source().contains("Bytes"));
         assert!(!pointers.c_stub_source().contains("moon_bindgen_ptr_"));
+    }
+
+    #[test]
+    fn can_prefer_managed_byte_parameter_types_without_a_stub() {
+        let path = std::env::temp_dir().join(format!(
+            "moon_bindgen_managed_byte_parameters_{}.rs",
+            std::process::id()
+        ));
+        fs::write(
+            &path,
+            r#"
+pub type ByteAlias = u8;
+unsafe extern "C" {
+  pub fn process(
+    input: *const u8,
+    output: *mut ByteAlias,
+    text: *const core::ffi::c_char,
+    words: *const u32,
+  );
+  pub fn borrowed_result() -> *const u8;
+}
+"#,
+        )
+        .unwrap();
+        let bindings = Builder::new()
+            .input_extern_file(&path)
+            .moonbit_prefer_managed_types(true)
+            .generate()
+            .unwrap();
+        let _ = fs::remove_file(path);
+        let moon = bindings.moonbit_source();
+        assert!(moon.contains("input : Bytes"));
+        assert!(moon.contains("output : FixedArray[Byte]"));
+        assert!(moon.contains("text : Bytes"));
+        assert!(moon.contains("words : @c.ReadOnlyPointer[@c.CUInt32]"));
+        assert!(moon.contains("-> @c.ReadOnlyPointer[@c.CUInt8]"));
+        assert!(bindings.c_stub_source().is_empty());
     }
 
     #[test]
