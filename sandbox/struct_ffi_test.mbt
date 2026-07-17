@@ -7,12 +7,20 @@ fn byte_pointer_outputs() -> (
     @c.ReadOnlyPointer::null(),
   ]
   let lengths : FixedArray[@c.CSize] = [0UL]
-  let length_pointer = @c.CSizeArrayAsPointer::as_pointer(lengths)
-  test_byte_pointer(
-    @c.ReadOnlyPointerArray::as_pointer(pointers),
-    length_pointer,
+  @c.ReadOnlyPointerArray::with_pointer(
+    pointers,
+    fn(pointer) {
+      @c.CSizeArrayAsPointer::with_pointer(
+        lengths,
+        fn(length) { test_byte_pointer(pointer, length) },
+      )
+    },
   )
-  (pointers, length_pointer.as_readonly().read_size())
+  let length = @c.CSizeArrayAsPointer::with_pointer(
+    lengths,
+    fn(pointer) { pointer.as_readonly().read_size() },
+  )
+  (pointers, length)
 }
 
 ///|
@@ -81,7 +89,10 @@ test "triple pointer updates the deepest external context" {
 ///|
 test "double pointer to a primitive" {
   let values : FixedArray[@c.Pointer[Int]] = [@c.Pointer::null()]
-  test_int_pointer(@c.PointerArray::as_pointer(values))
+  @c.PointerArray::with_pointer(
+    values,
+    fn(pointer) { test_int_pointer(pointer) },
+  )
   let value = values[0]
   assert_eq(value.as_readonly().read_int32(), 42)
   value.write_int32(99)
