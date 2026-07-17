@@ -2,6 +2,10 @@
 // Source: LZ4 1.10.0 (BSD-2-Clause)
 
 ///|
+/// LZ4_streamDecode_t :
+///  Never ever use below internal definitions directly !
+///  These definitions are not API/ABI safe, and may change in future versions.
+///  If you need static allocation, declare or allocate an LZ4_streamDecode_t object.
 #external
 pub type Lz4StreamDecodeTInternal // #[repr(C)] struct
 
@@ -263,128 +267,484 @@ pub const WINT_MAX : UInt = 2147483647
 ///|
 pub const WINT_MIN : Int = -2147483648
 
+///|
+/// LZ4_attach_dictionary() : stable since v1.10.0
+///
+///  This allows efficient re-use of a static dictionary multiple times.
+///
+///  Rather than re-loading the dictionary buffer into a working context before
+///  each compression, or copying a pre-loaded dictionary's LZ4_stream_t into a
+///  working LZ4_stream_t, this function introduces a no-copy setup mechanism,
+///  in which the working stream references @dictionaryStream in-place.
+///
+///  Several assumptions are made about the state of @dictionaryStream.
+///  Currently, only states which have been prepared by LZ4_loadDict() or
+///  LZ4_loadDictSlow() should be expected to work.
+///
+///  Alternatively, the provided @dictionaryStream may be NULL,
+///  in which case any existing dictionary stream is unset.
+///
+///  If a dictionary is provided, it replaces any pre-existing stream history.
+///  The dictionary contents are the only history that can be referenced and
+///  logically immediately precede the data compressed in the first subsequent
+///  compression call.
+///
+///  The dictionary will only remain attached to the working stream through the
+///  first compression call, at the end of which it is cleared.
+/// @dictionaryStream stream (and source buffer) must remain in-place / accessible / unchanged
+///  through the completion of the compression session.
+///
+///  Note: there is no equivalent LZ4_attach_*() method on the decompression side
+///  because there is no initialization cost, hence no need to share the cost across multiple sessions.
+///  To decompress LZ4 blocks using dictionary, attached or not,
+///  just employ the regular LZ4_setStreamDecode() for streaming,
+///  or the stateless LZ4_decompress_safe_usingDict() for one-shot decompression.
 #borrow(working_stream, dictionary_stream)
 pub extern "c" fn lz4_attach_dictionary(working_stream : @c.Pointer[Lz4StreamT], dictionary_stream : @c.ReadOnlyPointer[Lz4StreamT]) = "LZ4_attach_dictionary"
 
+///|
+/// Obsolete compression functions (since v1.7.3)
 #borrow(src, dest)
 pub extern "c" fn lz4_compress(src : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], src_size : @c.CInt) -> @c.CInt = "LZ4_compress"
 
+///|
+/// LZ4_compressBound() :
+/// Provides the maximum size that LZ4 compression may output in a "worst case" scenario (input data not compressible)
+/// This function is primarily useful for memory allocation purposes (destination buffer size).
+/// Macro LZ4_COMPRESSBOUND() is also provided for compilation-time evaluation (stack memory allocation for example).
+/// Note that LZ4_compress_default() compresses faster when dstCapacity is >= LZ4_compressBound(srcSize)
+/// inputSize  : max supported value is LZ4_MAX_INPUT_SIZE
+/// return : maximum output size in a "worst case" scenario
+/// or 0, if input size is incorrect (too large or negative)
 pub extern "c" fn lz4_compress_bound(input_size : @c.CInt) -> @c.CInt = "LZ4_compressBound"
 
+///|
 #borrow(lz4_stream_ptr, source, dest)
 pub extern "c" fn lz4_compress_continue(lz4_stream_ptr : @c.Pointer[Lz4StreamT], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : @c.CInt) -> @c.CInt = "LZ4_compress_continue"
 
+///|
+/// LZ4_compress_default() :
+///  Compresses 'srcSize' bytes from buffer 'src'
+///  into already allocated 'dst' buffer of size 'dstCapacity'.
+///  Compression is guaranteed to succeed if 'dstCapacity' >= LZ4_compressBound(srcSize).
+///  It also runs faster, so it's a recommended setting.
+///  If the function cannot compress 'src' into a more limited 'dst' budget,
+///  compression stops *immediately*, and the function result is zero.
+///  In which case, 'dst' content is undefined (invalid).
+///      srcSize : max supported value is LZ4_MAX_INPUT_SIZE.
+///      dstCapacity : size of buffer 'dst' (which must be already allocated)
+///     @return  : the number of bytes written into buffer 'dst' (necessarily <= dstCapacity)
+///                or 0 if compression fails
+/// Note : This function is protected against buffer overflow scenarios (never writes outside 'dst' buffer, nor read outside 'source' buffer).
 #borrow(src, dst)
 pub extern "c" fn lz4_compress_default(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt) -> @c.CInt = "LZ4_compress_default"
 
+///|
+/// LZ4_compress_destSize() :
+///  Reverse the logic : compresses as much data as possible from 'src' buffer
+///  into already allocated buffer 'dst', of size >= 'dstCapacity'.
+///  This function either compresses the entire 'src' content into 'dst' if it's large enough,
+///  or fill 'dst' buffer completely with as much data as possible from 'src'.
+///  note: acceleration parameter is fixed to "default".
+///
+/// srcSizePtr : in+out parameter. Initially contains size of input.
+///               Will be modified to indicate how many bytes where read from 'src' to fill 'dst'.
+///               New value is necessarily <= input value.
+/// @return : Nb bytes written into 'dst' (necessarily <= dstCapacity)
+///           or 0 if compression fails.
+///
+/// Note : 'targetDstSize' must be >= 1, because it's the smallest valid lz4 payload.
+///
+/// Note 2:from v1.8.2 to v1.9.1, this function had a bug (fixed in v1.9.2+):
+///        the produced compressed content could, in rare circumstances,
+///        require to be decompressed into a destination buffer
+///        larger by at least 1 byte than decompressesSize.
+///        If an application uses `LZ4_compress_destSize()`,
+///        it's highly recommended to update liblz4 to v1.9.2 or better.
+///        If this can't be done or ensured,
+///        the receiving decompression function should provide
+///        a dstCapacity which is > decompressedSize, by at least 1 byte.
+///        See https://github.com/lz4/lz4/issues/859 for details
 #borrow(src, dst, src_size_ptr)
 pub extern "c" fn lz4_compress_dest_size(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size_ptr : @c.Pointer[@c.CInt], target_dst_size : @c.CInt) -> @c.CInt = "LZ4_compress_destSize"
 
+///|
+/// LZ4_compress_fast() :
+/// Same as LZ4_compress_default(), but allows selection of "acceleration" factor.
+/// The larger the acceleration value, the faster the algorithm, but also the lesser the compression.
+/// It's a trade-off. It can be fine tuned, with each successive value providing roughly +~3% to speed.
+/// An acceleration value of "1" is the same as regular LZ4_compress_default()
+/// Values <= 0 will be replaced by LZ4_ACCELERATION_DEFAULT (currently == 1, see lz4.c).
+/// Values > LZ4_ACCELERATION_MAX will be replaced by LZ4_ACCELERATION_MAX (currently == 65537, see lz4.c).
 #borrow(src, dst)
 pub extern "c" fn lz4_compress_fast(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt, acceleration : @c.CInt) -> @c.CInt = "LZ4_compress_fast"
 
+///|
+/// LZ4_compress_fast_continue() :
+///  Compress 'src' content using data from previously compressed blocks, for better compression ratio.
+/// 'dst' buffer must be already allocated.
+///  If dstCapacity >= LZ4_compressBound(srcSize), compression is guaranteed to succeed, and runs faster.
+///
+/// @return : size of compressed block
+///           or 0 if there is an error (typically, cannot fit into 'dst').
+///
+///  Note 1 : Each invocation to LZ4_compress_fast_continue() generates a new block.
+///           Each block has precise boundaries.
+///           Each block must be decompressed separately, calling LZ4_decompress_*() with relevant metadata.
+///           It's not possible to append blocks together and expect a single invocation of LZ4_decompress_*() to decompress them together.
+///
+///  Note 2 : The previous 64KB of source data is __assumed__ to remain present, unmodified, at same address in memory !
+///
+///  Note 3 : When input is structured as a double-buffer, each buffer can have any size, including < 64 KB.
+///           Make sure that buffers are separated, by at least one byte.
+///           This construction ensures that each block only depends on previous block.
+///
+///  Note 4 : If input buffer is a ring-buffer, it can have any size, including < 64 KB.
+///
+///  Note 5 : After an error, the stream status is undefined (invalid), it can only be reset or freed.
 #borrow(stream_ptr, src, dst)
 pub extern "c" fn lz4_compress_fast_continue(stream_ptr : @c.Pointer[Lz4StreamT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt, acceleration : @c.CInt) -> @c.CInt = "LZ4_compress_fast_continue"
 
+///|
 #borrow(state, src, dst)
 pub extern "c" fn lz4_compress_fast_ext_state(state : @c.Pointer[@c.CVoid], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt, acceleration : @c.CInt) -> @c.CInt = "LZ4_compress_fast_extState"
 
+///|
 #borrow(src, dest)
 pub extern "c" fn lz4_compress_limited_output(src : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], src_size : @c.CInt, max_output_size : @c.CInt) -> @c.CInt = "LZ4_compress_limitedOutput"
 
+///|
 #borrow(lz4_stream_ptr, source, dest)
 pub extern "c" fn lz4_compress_limited_output_continue(lz4_stream_ptr : @c.Pointer[Lz4StreamT], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : @c.CInt, max_output_size : @c.CInt) -> @c.CInt = "LZ4_compress_limitedOutput_continue"
 
+///|
 #borrow(state, source, dest)
 pub extern "c" fn lz4_compress_limited_output_with_state(state : @c.Pointer[@c.CVoid], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : @c.CInt, max_output_size : @c.CInt) -> @c.CInt = "LZ4_compress_limitedOutput_withState"
 
+///|
 #borrow(state, source, dest)
 pub extern "c" fn lz4_compress_with_state(state : @c.Pointer[@c.CVoid], source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], input_size : @c.CInt) -> @c.CInt = "LZ4_compress_withState"
 
+///|
 #borrow(input_buffer)
 pub extern "c" fn lz4_create(input_buffer : @c.Pointer[@c.CChar]) -> @c.Pointer[@c.CVoid] = "LZ4_create"
 
+///|
 pub extern "c" fn lz4_create_stream() -> @c.Pointer[Lz4StreamT] = "LZ4_createStream"
 
+///|
 pub extern "c" fn lz4_create_stream_decode() -> @c.Pointer[Lz4StreamDecodeT] = "LZ4_createStreamDecode"
 
+///|
+/// LZ4_decoderRingBufferSize() : v1.8.2+
+///  Note : in a ring buffer scenario (optional),
+///  blocks are presumed decompressed next to each other
+///  up to the moment there is not enough remaining space for next block (remainingSize < maxBlockSize),
+///  at which stage it resumes from beginning of ring buffer.
+///  When setting such a ring buffer for streaming decompression,
+///  provides the minimum size of this ring buffer
+///  to be compatible with any source respecting maxBlockSize condition.
+/// @return : minimum ring buffer size,
+///           or 0 if there is an error (invalid maxBlockSize).
 pub extern "c" fn lz4_decoder_ring_buffer_size(max_block_size : @c.CInt) -> @c.CInt = "LZ4_decoderRingBufferSize"
 
+///|
+/// Obsolete LZ4_decompress_fast variants (since v1.9.0) :
+///  These functions used to be faster than LZ4_decompress_safe(),
+///  but this is no longer the case. They are now slower.
+///  This is because LZ4_decompress_fast() doesn't know the input size,
+///  and therefore must progress more cautiously into the input buffer to not read beyond the end of block.
+///  On top of that `LZ4_decompress_fast()` is not protected vs malformed or malicious inputs, making it a security liability.
+///  As a consequence, LZ4_decompress_fast() is strongly discouraged, and deprecated.
+///
+///  The last remaining LZ4_decompress_fast() specificity is that
+///  it can decompress a block without knowing its compressed size.
+///  Such functionality can be achieved in a more secure manner
+///  by employing LZ4_decompress_safe_partial().
+///
+///  Parameters:
+///  originalSize : is the uncompressed size to regenerate.
+///                 `dst` must be already allocated, its size must be >= 'originalSize' bytes.
+/// @return : number of bytes read from source buffer (== compressed size).
+///           The function expects to finish at block's end exactly.
+///           If the source stream is detected malformed, the function stops decoding and returns a negative result.
+///  note : LZ4_decompress_fast*() requires originalSize. Thanks to this information, it never writes past the output buffer.
+///         However, since it doesn't know its 'src' size, it may read an unknown amount of input, past input buffer bounds.
+///         Also, since match offsets are not validated, match reads from 'src' may underflow too.
+///         These issues never happen if input (compressed) data is correct.
+///         But they may happen if input data is invalid (error or intentional tampering).
+///         As a consequence, use these functions in trusted environments with trusted data **only**.
 #borrow(src, dst)
 pub extern "c" fn lz4_decompress_fast(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : @c.CInt) -> @c.CInt = "LZ4_decompress_fast"
 
+///|
 #borrow(lz4_stream_decode, src, dst)
 pub extern "c" fn lz4_decompress_fast_continue(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : @c.CInt) -> @c.CInt = "LZ4_decompress_fast_continue"
 
+///|
 #borrow(src, dst, dict_start)
 pub extern "c" fn lz4_decompress_fast_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : @c.CInt, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_decompress_fast_usingDict"
 
+///|
 #borrow(src, dst)
 pub extern "c" fn lz4_decompress_fast_with_prefix64k(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], original_size : @c.CInt) -> @c.CInt = "LZ4_decompress_fast_withPrefix64k"
 
+///|
+/// LZ4_decompress_safe() :
+/// @compressedSize : is the exact complete size of the compressed block.
+/// @dstCapacity : is the size of destination buffer (which must be already allocated),
+///                presumed an upper bound of decompressed size.
+/// @return : the number of bytes decompressed into destination buffer (necessarily <= dstCapacity)
+///           If destination buffer is not large enough, decoding will stop and output an error code (negative value).
+///           If the source stream is detected malformed, the function will stop decoding and return a negative result.
+/// Note 1 : This function is protected against malicious data packets :
+///          it will never writes outside 'dst' buffer, nor read outside 'source' buffer,
+///          even if the compressed block is maliciously modified to order the decoder to do these actions.
+///          In such case, the decoder stops immediately, and considers the compressed block malformed.
+/// Note 2 : compressedSize and dstCapacity must be provided to the function, the compressed block does not contain them.
+///          The implementation is free to send / store / derive this information in whichever way is most beneficial.
+///          If there is a need for a different format which bundles together both compressed data and its metadata, consider looking at lz4frame.h instead.
 #borrow(src, dst)
 pub extern "c" fn lz4_decompress_safe(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : @c.CInt, dst_capacity : @c.CInt) -> @c.CInt = "LZ4_decompress_safe"
 
+///|
+/// LZ4_decompress_safe_continue() :
+///  This decoding function allows decompression of consecutive blocks in "streaming" mode.
+///  The difference with the usual independent blocks is that
+///  new blocks are allowed to find references into former blocks.
+///  A block is an unsplittable entity, and must be presented entirely to the decompression function.
+///  LZ4_decompress_safe_continue() only accepts one block at a time.
+///  It's modeled after `LZ4_decompress_safe()` and behaves similarly.
+///
+/// @LZ4_streamDecode : decompression state, tracking the position in memory of past data
+/// @compressedSize : exact complete size of one compressed block.
+/// @dstCapacity : size of destination buffer (which must be already allocated),
+///                must be an upper bound of decompressed size.
+/// @return : number of bytes decompressed into destination buffer (necessarily <= dstCapacity)
+///           If destination buffer is not large enough, decoding will stop and output an error code (negative value).
+///           If the source stream is detected malformed, the function will stop decoding and return a negative result.
+///
+///  The last 64KB of previously decoded data *must* remain available and unmodified
+///  at the memory position where they were previously decoded.
+///  If less than 64KB of data has been decoded, all the data must be present.
+///
+///  Special : if decompression side sets a ring buffer, it must respect one of the following conditions :
+///  - Decompression buffer size is _at least_ LZ4_decoderRingBufferSize(maxBlockSize).
+///    maxBlockSize is the maximum size of any single block. It can have any value > 16 bytes.
+///    In which case, encoding and decoding buffers do not need to be synchronized.
+///    Actually, data can be produced by any source compliant with LZ4 format specification, and respecting maxBlockSize.
+///  - Synchronized mode :
+///    Decompression buffer size is _exactly_ the same as compression buffer size,
+///    and follows exactly same update rule (block boundaries at same positions),
+///    and decoding function is provided with exact decompressed size of each block (exception for last block of the stream),
+///    _then_ decoding & encoding ring buffer can have any size, including small ones ( < 64 KB).
+///  - Decompression buffer is larger than encoding buffer, by a minimum of maxBlockSize more bytes.
+///    In which case, encoding and decoding buffers do not need to be synchronized,
+///    and encoding ring buffer can have any size, including small ones ( < 64 KB).
+///
+///  Whenever these conditions are not possible,
+///  save the last 64KB of decoded data into a safe buffer where it can't be modified during decompression,
+///  then indicate where this data is saved using LZ4_setStreamDecode(), before decompressing next block.
 #borrow(lz4_stream_decode, src, dst)
 pub extern "c" fn lz4_decompress_safe_continue(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt) -> @c.CInt = "LZ4_decompress_safe_continue"
 
+///|
+/// LZ4_decompress_safe_partial() :
+///  Decompress an LZ4 compressed block, of size 'srcSize' at position 'src',
+///  into destination buffer 'dst' of size 'dstCapacity'.
+///  Up to 'targetOutputSize' bytes will be decoded.
+///  The function stops decoding on reaching this objective.
+///  This can be useful to boost performance
+///  whenever only the beginning of a block is required.
+///
+/// @return : the number of bytes decoded in `dst` (necessarily <= targetOutputSize)
+///           If source stream is detected malformed, function returns a negative result.
+///
+///  Note 1 : @return can be < targetOutputSize, if compressed block contains less data.
+///
+///  Note 2 : targetOutputSize must be <= dstCapacity
+///
+///  Note 3 : this function effectively stops decoding on reaching targetOutputSize,
+///           so dstCapacity is kind of redundant.
+///           This is because in older versions of this function,
+///           decoding operation would still write complete sequences.
+///           Therefore, there was no guarantee that it would stop writing at exactly targetOutputSize,
+///           it could write more bytes, though only up to dstCapacity.
+///           Some "margin" used to be required for this operation to work properly.
+///           Thankfully, this is no longer necessary.
+///           The function nonetheless keeps the same signature, in an effort to preserve API compatibility.
+///
+///  Note 4 : If srcSize is the exact size of the block,
+///           then targetOutputSize can be any value,
+///           including larger than the block's decompressed size.
+///           The function will, at most, generate block's decompressed size.
+///
+///  Note 5 : If srcSize is _larger_ than block's compressed size,
+///           then targetOutputSize **MUST** be <= block's decompressed size.
+///           Otherwise, *silent corruption will occur*.
 #borrow(src, dst)
 pub extern "c" fn lz4_decompress_safe_partial(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, target_output_size : @c.CInt, dst_capacity : @c.CInt) -> @c.CInt = "LZ4_decompress_safe_partial"
 
+///|
+/// LZ4_decompress_safe_partial_usingDict() :
+///  Behaves the same as LZ4_decompress_safe_partial()
+///  with the added ability to specify a memory segment for past data.
+///  Performance tip : Decompression speed can be substantially increased
+///                    when dst == dictStart + dictSize.
 #borrow(src, dst, dict_start)
 pub extern "c" fn lz4_decompress_safe_partial_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : @c.CInt, target_output_size : @c.CInt, max_output_size : @c.CInt, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_decompress_safe_partial_usingDict"
 
+///|
+/// LZ4_decompress_safe_usingDict() :
+///  Works the same as
+///  a combination of LZ4_setStreamDecode() followed by LZ4_decompress_safe_continue()
+///  However, it's stateless: it doesn't need any LZ4_streamDecode_t state.
+///  Dictionary is presumed stable : it must remain accessible and unmodified during decompression.
+///  Performance tip : Decompression speed can be substantially increased
+///                    when dst == dictStart + dictSize.
 #borrow(src, dst, dict_start)
 pub extern "c" fn lz4_decompress_safe_using_dict(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], src_size : @c.CInt, dst_capacity : @c.CInt, dict_start : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_decompress_safe_usingDict"
 
+///|
+/// Obsolete streaming decoding functions (since v1.7.0)
 #borrow(src, dst)
 pub extern "c" fn lz4_decompress_safe_with_prefix64k(src : @c.ReadOnlyPointer[@c.CChar], dst : @c.Pointer[@c.CChar], compressed_size : @c.CInt, max_dst_size : @c.CInt) -> @c.CInt = "LZ4_decompress_safe_withPrefix64k"
 
+///|
 #borrow(stream_ptr)
 pub extern "c" fn lz4_free_stream(stream_ptr : @c.Pointer[Lz4StreamT]) -> @c.CInt = "LZ4_freeStream"
 
+///|
 #borrow(lz4_stream)
 pub extern "c" fn lz4_free_stream_decode(lz4_stream : @c.Pointer[Lz4StreamDecodeT]) -> @c.CInt = "LZ4_freeStreamDecode"
 
+///|
+/// LZ4_initStream() : v1.9.0+
+///  An LZ4_stream_t structure must be initialized at least once.
+///  This is automatically done when invoking LZ4_createStream(),
+///  but it's not when the structure is simply declared on stack (for example).
+///
+///  Use LZ4_initStream() to properly initialize a newly declared LZ4_stream_t.
+///  It can also initialize any arbitrary buffer of sufficient size,
+///  and will @return a pointer of proper type upon initialization.
+///
+///  Note : initialization fails if size and alignment conditions are not respected.
+///         In which case, the function will @return NULL.
+///  Note2: An LZ4_stream_t structure guarantees correct alignment and size.
+///  Note3: Before v1.9.0, use LZ4_resetStream() instead
 #borrow(state_buffer)
 pub extern "c" fn lz4_init_stream(state_buffer : @c.Pointer[@c.CVoid], size : @c.CSize) -> @c.Pointer[Lz4StreamT] = "LZ4_initStream"
 
+///|
+/// LZ4_loadDict() :
+///  Use this function to reference a static dictionary into LZ4_stream_t.
+///  The dictionary must remain available during compression.
+///  LZ4_loadDict() triggers a reset, so any previous data will be forgotten.
+///  The same dictionary will have to be loaded on decompression side for successful decoding.
+///  Dictionary are useful for better compression of small data (KB range).
+///  While LZ4 itself accepts any input as dictionary, dictionary efficiency is also a topic.
+///  When in doubt, employ the Zstandard's Dictionary Builder.
+///  Loading a size of 0 is allowed, and is the same as reset.
+/// @return : loaded dictionary size, in bytes (note: only the last 64 KB are loaded)
 #borrow(stream_ptr, dictionary)
 pub extern "c" fn lz4_load_dict(stream_ptr : @c.Pointer[Lz4StreamT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_loadDict"
 
+///|
+/// LZ4_loadDictSlow() : v1.10.0+
+///  Same as LZ4_loadDict(),
+///  but uses a bit more cpu to reference the dictionary content more thoroughly.
+///  This is expected to slightly improve compression ratio.
+///  The extra-cpu cost is likely worth it if the dictionary is re-used across multiple sessions.
+/// @return : loaded dictionary size, in bytes (note: only the last 64 KB are loaded)
 #borrow(stream_ptr, dictionary)
 pub extern "c" fn lz4_load_dict_slow(stream_ptr : @c.Pointer[Lz4StreamT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_loadDictSlow"
 
+///|
+/// LZ4_resetStream() :
+///  An LZ4_stream_t structure must be initialized at least once.
+///  This is done with LZ4_initStream(), or LZ4_resetStream().
+///  Consider switching to LZ4_initStream(),
+///  invoking LZ4_resetStream() will trigger deprecation warnings in the future.
 #borrow(stream_ptr)
 pub extern "c" fn lz4_reset_stream(stream_ptr : @c.Pointer[Lz4StreamT]) = "LZ4_resetStream"
 
+///|
 #borrow(state, input_buffer)
 pub extern "c" fn lz4_reset_stream_state(state : @c.Pointer[@c.CVoid], input_buffer : @c.Pointer[@c.CChar]) -> @c.CInt = "LZ4_resetStreamState"
 
+///|
+/// LZ4_resetStream_fast() : v1.9.0+
+///  Use this to prepare an LZ4_stream_t for a new chain of dependent blocks
+///  (e.g., LZ4_compress_fast_continue()).
+///
+///  An LZ4_stream_t must be initialized once before usage.
+///  This is automatically done when created by LZ4_createStream().
+///  However, should the LZ4_stream_t be simply declared on stack (for example),
+///  it's necessary to initialize it first, using LZ4_initStream().
+///
+///  After init, start any new stream with LZ4_resetStream_fast().
+///  A same LZ4_stream_t can be re-used multiple times consecutively
+///  and compress multiple streams,
+///  provided that it starts each new stream with LZ4_resetStream_fast().
+///
+///  LZ4_resetStream_fast() is much faster than LZ4_initStream(),
+///  but is not compatible with memory regions containing garbage data.
+///
+///  Note: it's only useful to call LZ4_resetStream_fast()
+///        in the context of streaming compression.
+///        The *extState* functions perform their own resets.
+///        Invoking LZ4_resetStream_fast() before is redundant, and even counterproductive.
 #borrow(stream_ptr)
 pub extern "c" fn lz4_reset_stream_fast(stream_ptr : @c.Pointer[Lz4StreamT]) = "LZ4_resetStream_fast"
 
+///|
+/// LZ4_saveDict() :
+///  If last 64KB data cannot be guaranteed to remain available at its current memory location,
+///  save it into a safer place (char* safeBuffer).
+///  This is schematically equivalent to a memcpy() followed by LZ4_loadDict(),
+///  but is much faster, because LZ4_saveDict() doesn't need to rebuild tables.
+/// @return : saved dictionary size in bytes (necessarily <= maxDictSize), or 0 if error.
 #borrow(stream_ptr, safe_buffer)
 pub extern "c" fn lz4_save_dict(stream_ptr : @c.Pointer[Lz4StreamT], safe_buffer : @c.Pointer[@c.CChar], max_dict_size : @c.CInt) -> @c.CInt = "LZ4_saveDict"
 
+///|
+/// LZ4_setStreamDecode() :
+///  An LZ4_streamDecode_t context can be allocated once and re-used multiple times.
+///  Use this function to start decompression of a new stream of blocks.
+///  A dictionary can optionally be set. Use NULL or size 0 for a reset order.
+///  Dictionary is presumed stable : it must remain accessible and unmodified during next decompression.
+/// @return : 1 if OK, 0 if error
 #borrow(lz4_stream_decode, dictionary)
 pub extern "c" fn lz4_set_stream_decode(lz4_stream_decode : @c.Pointer[Lz4StreamDecodeT], dictionary : @c.ReadOnlyPointer[@c.CChar], dict_size : @c.CInt) -> @c.CInt = "LZ4_setStreamDecode"
 
+///|
+/// LZ4_compress_fast_extState() :
+///  Same as LZ4_compress_fast(), using an externally allocated memory space for its state.
+///  Use LZ4_sizeofState() to know how much memory must be allocated,
+///  and allocate it on 8-bytes boundaries (using `malloc()` typically).
+///  Then, provide this buffer as `void* state` to compression function.
 pub extern "c" fn lz4_sizeof_state() -> @c.CInt = "LZ4_sizeofState"
 
+///|
 pub extern "c" fn lz4_sizeof_stream_state() -> @c.CInt = "LZ4_sizeofStreamState"
 
+///|
 #borrow(state)
 pub extern "c" fn lz4_slide_input_buffer(state : @c.Pointer[@c.CVoid]) -> @c.Pointer[@c.CChar] = "LZ4_slideInputBuffer"
 
+///|
+/// Obsolete decompression functions (since v1.8.0)
 #borrow(source, dest)
 pub extern "c" fn lz4_uncompress(source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], output_size : @c.CInt) -> @c.CInt = "LZ4_uncompress"
 
+///|
 #borrow(source, dest)
 pub extern "c" fn lz4_uncompress_unknown_output_size(source : @c.ReadOnlyPointer[@c.CChar], dest : @c.Pointer[@c.CChar], isize : @c.CInt, max_output_size : @c.CInt) -> @c.CInt = "LZ4_uncompress_unknownOutputSize"
 
+///|
 pub extern "c" fn lz4_version_number() -> @c.CInt = "LZ4_versionNumber"
 
+///|
 pub extern "c" fn lz4_version_string() -> @c.ReadOnlyPointer[@c.CChar] = "LZ4_versionString"
 
 #borrow(external_dict, prefix_end)

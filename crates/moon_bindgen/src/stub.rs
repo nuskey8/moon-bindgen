@@ -1,3 +1,4 @@
+use crate::generate::emit_doc;
 use crate::model::{Diagnostic, DiagnosticLevel, Function, Model, Struct, Type};
 use crate::{Ownership, Visibility};
 use heck::ToSnakeCase;
@@ -24,6 +25,7 @@ struct Context<'a> {
 struct Leaf {
     path: Vec<String>,
     ty: Type,
+    docs: Vec<String>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -280,15 +282,17 @@ fn emit_field_accessors(
         moon.push_str(&format!(
             "#borrow(object, out)\nextern \"c\" fn {getter}(object : {struct_ty}, out : {moon_ty}) = \"{getter}\"\n\n"
         ));
+        emit_doc(moon, &leaf.docs);
         moon.push_str(&format!(
-            "///|\n{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  let out = FixedArray::make({len}, {initial})\n  {getter}(self, out)\n  out\n}}\n\n",
+            "{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  let out = FixedArray::make({len}, {initial})\n  {getter}(self, out)\n  out\n}}\n\n",
             ctx.visibility.prefix()
         ));
         moon.push_str(&format!(
             "#borrow(object, value)\nextern \"c\" fn {setter}(object : {struct_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
         ));
+        emit_doc(moon, &leaf.docs);
         moon.push_str(&format!(
-            "///|\n{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  if value.length() != {len} {{ abort(\"value must contain exactly {len} elements\") }}\n  {setter}(self, value)\n}}\n\n",
+            "{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  if value.length() != {len} {{ abort(\"value must contain exactly {len} elements\") }}\n  {setter}(self, value)\n}}\n\n",
             ctx.visibility.prefix()
         ));
         c.push_str(&format!(
@@ -303,8 +307,9 @@ fn emit_field_accessors(
     moon.push_str(&format!(
         "#borrow(object)\nextern \"c\" fn {getter}(object : {struct_ty}) -> {moon_ty} = \"{getter}\"\n\n"
     ));
+    emit_doc(moon, &leaf.docs);
     moon.push_str(&format!(
-        "///|\n{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  {getter}(self)\n}}\n\n",
+        "{}fn {struct_ty}::get_{field}(self : {struct_ty}) -> {moon_ty} {{\n  {getter}(self)\n}}\n\n",
         ctx.visibility.prefix()
     ));
     let setter_borrow = if needs_ownership(&leaf.ty) {
@@ -315,8 +320,9 @@ fn emit_field_accessors(
     moon.push_str(&format!(
         "{setter_borrow}\nextern \"c\" fn {setter}(object : {struct_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
     ));
+    emit_doc(moon, &leaf.docs);
     moon.push_str(&format!(
-        "///|\n{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  {setter}(self, value)\n}}\n\n",
+        "{}fn {struct_ty}::set_{field}(self : {struct_ty}, value : {moon_ty}) -> Unit {{\n  {setter}(self, value)\n}}\n\n",
         ctx.visibility.prefix()
     ));
     let c_ty = c_abi_type(&leaf.ty, ctx.model).unwrap();
@@ -336,14 +342,16 @@ fn emit_field_accessors(
 fn emit_moonbit_struct(out: &mut String, structure: &Struct, ctx: &Context<'_>) {
     let ty = type_name(&structure.name, ctx.type_rename);
     if structure.from_bindgen {
+        emit_doc(out, &structure.docs);
         out.push_str(&format!(
-            "///|\n#external\n{}type {ty} // native C layout\n\n",
+            "#external\n{}type {ty} // native C layout\n\n",
             ctx.visibility.prefix()
         ));
         return;
     }
+    emit_doc(out, &structure.docs);
     out.push_str(&format!(
-        "///|\n{}struct {} {{\n",
+        "{}struct {} {{\n",
         match ctx.visibility {
             Visibility::Private => "",
             Visibility::Public => "pub(all) ",
@@ -351,6 +359,15 @@ fn emit_moonbit_struct(out: &mut String, structure: &Struct, ctx: &Context<'_>) 
         ty
     ));
     for field in &structure.fields {
+        for line in &field.docs {
+            if line.is_empty() {
+                out.push_str("  ///\n");
+            } else {
+                out.push_str("  /// ");
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
         let ty = moon_type(&field.ty, ctx.model, ctx.type_rename).unwrap();
         out.push_str(&format!("  {} : {}\n", value_name(&field.name), ty));
     }
@@ -518,8 +535,9 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
     }
     moon.push_str(&format!(" = \"{shim}\"\n\n"));
 
+    emit_doc(moon, &function.docs);
     moon.push_str(&format!(
-        "///|\n{}fn {}({})",
+        "{}fn {}({})",
         ctx.visibility.prefix(),
         safe_ident(&(ctx.function_rename)(function.rust_name.clone())),
         wrapper_params.join(", ")
@@ -860,6 +878,7 @@ fn struct_leaves(name: &str, model: &Model) -> Vec<Leaf> {
                 out.push(Leaf {
                     path: prefix.clone(),
                     ty: field.ty.clone(),
+                    docs: field.docs.clone(),
                 });
             }
             prefix.pop();
