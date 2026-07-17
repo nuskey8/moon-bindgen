@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     moon_bindgen::Builder::default()
         .input_bindgen_file(&rust_bindings)
         .moonbit_file_header("// Source: LZ4 1.10.0 (BSD-2-Clause)")
+        .c_stub_file_header("#include \"../submodules/lz4/lib/lz4.h\"")
         .moonbit_visibility(moon_bindgen::Visibility::Public)
         .moonbit_ownership_resolver(|_, _| moon_bindgen::Ownership::Borrow)
         .generate()?

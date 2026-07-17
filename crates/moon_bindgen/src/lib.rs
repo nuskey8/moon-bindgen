@@ -174,10 +174,11 @@ impl Builder {
             return Err(Error::NoInput);
         }
         let mut model = model::Model::default();
-        for path in self
+        for (path, from_bindgen) in self
             .input_bindgen_files
             .iter()
-            .chain(&self.input_extern_files)
+            .map(|path| (path, true))
+            .chain(self.input_extern_files.iter().map(|path| (path, false)))
         {
             let source = fs::read_to_string(path).map_err(|source| Error::Read {
                 path: path.clone(),
@@ -187,7 +188,11 @@ impl Builder {
                 path: path.clone(),
                 source,
             })?;
-            parse::collect_file(&syntax, &mut model);
+            if from_bindgen {
+                parse::collect_bindgen_file(&syntax, &mut model);
+            } else {
+                parse::collect_file(&syntax, &mut model);
+            }
         }
         Ok(generate::render(
             &model,
@@ -297,5 +302,94 @@ unsafe extern "C" { pub fn round_trip(value: Value) -> Value; }
         assert!(!pointers.moonbit_source().contains("type Ptr[T]"));
         assert!(!pointers.moonbit_source().contains("Bytes"));
         assert!(!pointers.c_stub_source().contains("moon_bindgen_ptr_"));
+    }
+
+    #[test]
+    fn native_layout_stub_compiles_against_the_supplied_c_header() {
+        let dir =
+            std::env::temp_dir().join(format!("moon_bindgen_native_layout_{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("moonbit.h"),
+            r#"
+#include <stddef.h>
+#define MOONBIT_FFI_EXPORT
+void *moonbit_make_external_object(void *finalizer, size_t size);
+"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("library.h"),
+            r#"
+typedef struct {
+  long platform_word;
+  void *platform_data;
+} PlatformInfo;
+typedef struct SockAddr SockAddr;
+typedef struct {
+  SockAddr *from;
+  unsigned int from_len;
+  SockAddr *to;
+  unsigned int to_len;
+} RecvInfo;
+PlatformInfo round_trip_platform_info(PlatformInfo value);
+int receive_packet(const RecvInfo *info);
+"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("bindings.rs"),
+            r#"
+#[repr(C)]
+pub struct PlatformInfo {
+  pub _bindgen_opaque_blob: [u8; 16],
+}
+#[repr(C)]
+pub struct SockAddr {
+  pub _bindgen_opaque_blob: [u8; 128],
+}
+#[repr(C)]
+pub struct RecvInfo {
+  pub from: *mut SockAddr,
+  pub from_len: u32,
+  pub to: *mut SockAddr,
+  pub to_len: u32,
+}
+unsafe extern "C" {
+  pub fn round_trip_platform_info(value: PlatformInfo) -> PlatformInfo;
+  pub fn receive_packet(info: *const RecvInfo) -> i32;
+}
+"#,
+        )
+        .unwrap();
+        let bindings = Builder::new()
+            .input_bindgen_file(dir.join("bindings.rs"))
+            .c_stub_file_header("#include \"library.h\"")
+            .generate()
+            .unwrap();
+        let stub = dir.join("ffi_stub.c");
+        bindings.write_c_stub_to_file(&stub).unwrap();
+
+        let rustc = std::process::Command::new("rustc")
+            .arg("-vV")
+            .output()
+            .unwrap();
+        let version = String::from_utf8(rustc.stdout).unwrap();
+        let target = version
+            .lines()
+            .find_map(|line| line.strip_prefix("host: "))
+            .unwrap();
+
+        cc::Build::new()
+            .file(&stub)
+            .include(&dir)
+            .out_dir(&dir)
+            .host(target)
+            .target(target)
+            .opt_level(0)
+            .cargo_metadata(false)
+            .warnings_into_errors(true)
+            .compile("native_layout_stub");
+        let _ = fs::remove_dir_all(dir);
     }
 }

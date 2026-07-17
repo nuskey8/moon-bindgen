@@ -2,19 +2,24 @@ use crate::model::{Constant, Field, Function, Model, Struct, Type};
 use syn::{Attribute, Expr, ForeignItem, Item, Lit, Meta, ReturnType, Type as SynType};
 
 pub(crate) fn collect_file(file: &syn::File, model: &mut Model) {
-    collect_items(&file.items, model);
+    collect_items(&file.items, model, false);
 }
-fn collect_items(items: &[Item], model: &mut Model) {
+pub(crate) fn collect_bindgen_file(file: &syn::File, model: &mut Model) {
+    collect_items(&file.items, model, true);
+}
+fn collect_items(items: &[Item], model: &mut Model, from_bindgen: bool) {
     for item in items {
         match item {
             Item::ForeignMod(m) if is_c_abi(&Some(m.abi.clone())) => {
                 for item in &m.items {
                     if let ForeignItem::Fn(f) = item {
-                        collect_fn(&f.sig, &f.attrs, model);
+                        collect_fn(&f.sig, &f.attrs, model, from_bindgen);
                     }
                 }
             }
-            Item::Fn(f) if is_c_abi(&f.sig.abi) => collect_fn(&f.sig, &f.attrs, model),
+            Item::Fn(f) if is_c_abi(&f.sig.abi) => {
+                collect_fn(&f.sig, &f.attrs, model, from_bindgen)
+            }
             Item::Struct(s) if has_repr_c(&s.attrs) => {
                 let fields = collect_fields(&s.fields);
                 model.structs.insert(
@@ -25,6 +30,7 @@ fn collect_items(items: &[Item], model: &mut Model) {
                         is_opaque: fields
                             .iter()
                             .any(|field| is_bindgen_opaque_field(&field.name)),
+                        from_bindgen,
                         fields,
                     },
                 );
@@ -39,6 +45,7 @@ fn collect_items(items: &[Item], model: &mut Model) {
                         is_opaque: fields
                             .iter()
                             .any(|field| is_bindgen_opaque_field(&field.name)),
+                        from_bindgen,
                         fields,
                     },
                 );
@@ -59,14 +66,14 @@ fn collect_items(items: &[Item], model: &mut Model) {
             }
             Item::Mod(m) => {
                 if let Some((_, nested)) = &m.content {
-                    collect_items(nested, model);
+                    collect_items(nested, model, from_bindgen);
                 }
             }
             _ => {}
         }
     }
 }
-fn collect_fn(sig: &syn::Signature, attrs: &[Attribute], model: &mut Model) {
+fn collect_fn(sig: &syn::Signature, attrs: &[Attribute], model: &mut Model, from_bindgen: bool) {
     let rust_name = sig.ident.to_string();
     let symbol = export_name(attrs).unwrap_or_else(|| rust_name.clone());
     let mut params = vec![];
@@ -88,6 +95,7 @@ fn collect_fn(sig: &syn::Signature, attrs: &[Attribute], model: &mut Model) {
         Function {
             rust_name,
             symbol,
+            from_bindgen,
             params,
             result,
             variadic: sig.variadic.is_some(),

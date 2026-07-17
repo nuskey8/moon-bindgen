@@ -11,3 +11,6 @@ repository = "https://github.com/nuskey8/moon-bindgen"
 heck = "0.5"
 syn = { version = "2", features = ["full", "parsing", "extra-traits"] }
 thiserror = "2"
+
+[dev-dependencies]
+cc = "1"

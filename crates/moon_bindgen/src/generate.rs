@@ -38,6 +38,12 @@ pub(crate) fn render(
     out.push('\n');
     out.push_str(&stub.moonbit_types);
     let mut opaque = BTreeSet::new();
+    let legacy_value_structs = stub
+        .value_structs
+        .iter()
+        .filter(|name| !model.structs[*name].from_bindgen)
+        .cloned()
+        .collect::<BTreeSet<_>>();
     for f in model.functions.values() {
         if !function_filter(f.rust_name.clone()) {
             continue;
@@ -110,10 +116,10 @@ pub(crate) fn render(
         if stub.wrapped_symbols.contains(&f.symbol) {
             continue;
         }
-        if contains_pointer_to_value_struct(&f.result, &stub.value_structs)
+        if contains_pointer_to_value_struct(&f.result, &legacy_value_structs)
             || f.params
                 .iter()
-                .any(|(_, ty)| contains_pointer_to_value_struct(ty, &stub.value_structs))
+                .any(|(_, ty)| contains_pointer_to_value_struct(ty, &legacy_value_structs))
         {
             diagnostics.push(warning(
                 &f.rust_name,
@@ -1423,5 +1429,100 @@ unsafe extern "C" {
         assert!(stub.contains("uintptr_t unsigned_pointer;"));
         assert!(!stub.contains("int64_t signed_long;"));
         assert!(!stub.contains("uint64_t unsigned_long;"));
+    }
+
+    #[test]
+    fn bindgen_struct_values_use_the_native_c_layout() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct PlatformInfo {
+  pub _bindgen_opaque_blob: [u8; 136],
+}
+unsafe extern "C" {
+  pub fn round_trip_platform_info(value: PlatformInfo) -> PlatformInfo;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("#external\npub type PlatformInfo // native C layout"));
+        assert!(
+            moon.contains("pub fn round_trip_platform_info(value : PlatformInfo) -> PlatformInfo")
+        );
+        assert!(!moon.contains("pub(all) struct PlatformInfo"));
+        assert!(!moon.contains("PlatformInfo::new"));
+
+        let stub = b.c_stub_source();
+        assert!(stub.contains("typedef PlatformInfo moon_bindgen_c_PlatformInfo;"));
+        assert!(!stub.contains("struct moon_bindgen_c_PlatformInfo {"));
+        assert!(stub.contains("*(moon_bindgen_c_PlatformInfo *)value"));
+        assert!(stub.contains("sizeof(moon_bindgen_c_PlatformInfo)"));
+        assert!(stub.contains("*result = round_trip_platform_info("));
+    }
+
+    #[test]
+    fn constructs_portable_bindgen_structs_for_pointer_parameters() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct SockAddr {
+  pub _bindgen_opaque_blob: [u8; 128],
+}
+#[repr(C)]
+pub struct RecvInfo {
+  pub from: *mut SockAddr,
+  pub from_len: u32,
+  pub to: *mut SockAddr,
+  pub to_len: u32,
+}
+unsafe extern "C" {
+  pub fn receive_packet(info: *const RecvInfo) -> i32;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("pub fn RecvInfo::new("));
+        assert!(moon.contains("pub fn receive_packet(info : RecvInfo) -> Int"));
+        assert!(!moon.contains("pub fn SockAddr::new("));
+
+        let stub = b.c_stub_source();
+        assert!(stub.contains("typedef RecvInfo moon_bindgen_c_RecvInfo;"));
+        assert!(stub.contains("value->from = from;"));
+        assert!(stub.contains("(const moon_bindgen_c_RecvInfo *)info"));
+        assert!(!stub.contains("struct moon_bindgen_c_RecvInfo {"));
     }
 }
