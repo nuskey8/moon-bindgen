@@ -22,6 +22,7 @@ pub(crate) struct Function {
 pub(crate) struct Struct {
     pub name: String,
     pub is_union: bool,
+    pub is_opaque: bool,
     pub fields: Vec<Field>,
 }
 

@@ -1190,6 +1190,68 @@ unsafe extern "C" {
     }
 
     #[test]
+    fn preserves_bindgen_opaque_structs_as_external_types() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)] pub struct sockaddr_storage {
+  pub _bindgen_opaque_blob: [u64; 16],
+}
+#[repr(C)] pub struct timespec {
+  pub __bindgen_opaque_blob: [u64; 2],
+}
+#[repr(C)] pub struct quiche_send_info {
+  pub to: sockaddr_storage,
+  pub at: timespec,
+}
+unsafe extern "C" {
+  pub fn inspect_address(value: *const sockaddr_storage);
+  pub fn inspect_time(value: *const timespec);
+  pub fn send(info: quiche_send_info);
+  pub fn take_address(value: sockaddr_storage);
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+        let moon = b.moonbit_source();
+        assert!(moon.contains("#external\npub type SockaddrStorage"));
+        assert!(moon.contains("#external\npub type Timespec"));
+        assert!(moon.contains("#external\npub type QuicheSendInfo"));
+        assert!(moon.contains(
+            "pub extern \"c\" fn inspect_address(value : @c.ReadOnlyPointer[SockaddrStorage])"
+        ));
+        assert!(
+            moon.contains("pub extern \"c\" fn inspect_time(value : @c.ReadOnlyPointer[Timespec])")
+        );
+        assert!(!moon.contains("fn SockaddrStorage::new"));
+        assert!(!moon.contains("fn Timespec::new"));
+        assert!(!moon.contains("fn QuicheSendInfo::new"));
+        assert!(!moon.contains("fn send"));
+        assert!(!moon.contains("fn take_address"));
+        assert!(b.c_stub_source().is_empty());
+        assert_eq!(b.diagnostics().len(), 4);
+        assert!(
+            b.diagnostics()
+                .iter()
+                .all(|diagnostic| matches!(diagnostic.item.as_str(), "send" | "take_address"))
+        );
+    }
+
+    #[test]
     fn c_package_pointers_retain_null_values_directly() {
         let f = syn::parse_file(
             r#"

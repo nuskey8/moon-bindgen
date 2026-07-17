@@ -16,22 +16,30 @@ fn collect_items(items: &[Item], model: &mut Model) {
             }
             Item::Fn(f) if is_c_abi(&f.sig.abi) => collect_fn(&f.sig, &f.attrs, model),
             Item::Struct(s) if has_repr_c(&s.attrs) => {
+                let fields = collect_fields(&s.fields);
                 model.structs.insert(
                     s.ident.to_string(),
                     Struct {
                         name: s.ident.to_string(),
                         is_union: false,
-                        fields: collect_fields(&s.fields),
+                        is_opaque: fields
+                            .iter()
+                            .any(|field| is_bindgen_opaque_field(&field.name)),
+                        fields,
                     },
                 );
             }
             Item::Union(s) if has_repr_c(&s.attrs) => {
+                let fields = collect_fields(&syn::Fields::Named(s.fields.clone()));
                 model.structs.insert(
                     s.ident.to_string(),
                     Struct {
                         name: s.ident.to_string(),
                         is_union: true,
-                        fields: collect_fields(&syn::Fields::Named(s.fields.clone())),
+                        is_opaque: fields
+                            .iter()
+                            .any(|field| is_bindgen_opaque_field(&field.name)),
+                        fields,
                     },
                 );
             }
@@ -155,6 +163,10 @@ fn collect_fields(fields: &syn::Fields) -> Vec<Field> {
             ty: parse_type(&field.ty),
         })
         .collect()
+}
+
+fn is_bindgen_opaque_field(name: &str) -> bool {
+    matches!(name, "_bindgen_opaque_blob" | "__bindgen_opaque_blob")
 }
 fn array_len(expr: &Expr) -> Option<usize> {
     if let Expr::Lit(lit) = expr
