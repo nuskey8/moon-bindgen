@@ -260,15 +260,16 @@ fn moon_type_config(ty: &Type, type_rename: fn(String) -> String) -> Option<Stri
     match ty {
         Type::Unit => Some("Unit".into()),
         Type::Path(p) => Some(match p.rsplit("::").next()? {
-            "i8" | "u8" | "c_char" | "c_schar" | "c_uchar" => "Byte".into(),
-            "i16" | "u16" | "c_short" | "c_ushort" | "i32" | "c_int" => "Int".into(),
-            "u32" | "c_uint" => "UInt".into(),
-            "i64" | "c_longlong" | "isize" | "c_long" => "Int64".into(),
-            "u64" | "c_ulonglong" | "usize" | "c_ulong" | "size_t" => "UInt64".into(),
+            "i8" | "u8" => "Byte".into(),
+            "i16" | "u16" | "i32" => "Int".into(),
+            "u32" => "UInt".into(),
+            "i64" => "Int64".into(),
+            "u64" => "UInt64".into(),
             "f32" | "c_float" => "Float".into(),
             "f64" | "c_double" => "Double".into(),
             "bool" => "Bool".into(),
             "c_void" => "Unit".into(),
+            name if c_scalar_moon_type(name).is_some() => c_scalar_moon_type(name)?.into(),
             other => renamed_type_ident(other, type_rename),
         }),
         Type::Pointer { inner, mutable } => Some(format!(
@@ -333,6 +334,8 @@ pub(crate) fn c_marker_type(name: &str) -> Option<&'static str> {
         "u64" => "@c.CUInt64",
         "isize" | "ptrdiff_t" => "@c.CPtrDiff",
         "usize" | "size_t" => "@c.CSize",
+        "intptr_t" => "@c.CIntPtr",
+        "uintptr_t" => "@c.CUIntPtr",
         "bool" => "@c.CBool",
         "c_char" => "@c.CChar",
         "c_schar" => "@c.CSignedChar",
@@ -348,6 +351,27 @@ pub(crate) fn c_marker_type(name: &str) -> Option<&'static str> {
         "c_float" | "f32" => "@c.CFloat",
         "c_double" | "f64" => "@c.CDouble",
         "c_void" => "@c.CVoid",
+        _ => return None,
+    })
+}
+
+pub(crate) fn c_scalar_moon_type(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "isize" | "ptrdiff_t" => "@c.CPtrDiff",
+        "usize" | "size_t" => "@c.CSize",
+        "intptr_t" => "@c.CIntPtr",
+        "uintptr_t" => "@c.CUIntPtr",
+        "c_char" => "@c.CChar",
+        "c_schar" => "@c.CSignedChar",
+        "c_uchar" => "@c.CUnsignedChar",
+        "c_short" => "@c.CShort",
+        "c_ushort" => "@c.CUnsignedShort",
+        "c_int" => "@c.CInt",
+        "c_uint" => "@c.CUnsignedInt",
+        "c_long" => "@c.CLong",
+        "c_ulong" => "@c.CUnsignedLong",
+        "c_longlong" => "@c.CLongLong",
+        "c_ulonglong" => "@c.CUnsignedLongLong",
         _ => return None,
     })
 }
@@ -542,6 +566,10 @@ fn is_primitive(s: &str) -> bool {
             | "c_ulong"
             | "c_longlong"
             | "c_ulonglong"
+            | "size_t"
+            | "ptrdiff_t"
+            | "intptr_t"
+            | "uintptr_t"
             | "c_float"
             | "c_double"
             | "c_void"
@@ -549,16 +577,17 @@ fn is_primitive(s: &str) -> bool {
 }
 
 fn primitive_moon_type(path: &str) -> Option<&'static str> {
-    match path.rsplit("::").next()? {
-        "i8" | "u8" | "c_char" | "c_schar" | "c_uchar" => Some("Byte"),
-        "i16" | "u16" | "c_short" | "c_ushort" | "i32" | "c_int" => Some("Int"),
-        "u32" | "c_uint" => Some("UInt"),
-        "i64" | "c_longlong" | "isize" | "c_long" => Some("Int64"),
-        "u64" | "c_ulonglong" | "usize" | "c_ulong" | "size_t" => Some("UInt64"),
+    let name = path.rsplit("::").next()?;
+    match name {
+        "i8" | "u8" => Some("Byte"),
+        "i16" | "u16" | "i32" => Some("Int"),
+        "u32" => Some("UInt"),
+        "i64" => Some("Int64"),
+        "u64" => Some("UInt64"),
         "f32" | "c_float" => Some("Float"),
         "f64" | "c_double" => Some("Double"),
         "bool" => Some("Bool"),
-        _ => None,
+        _ => c_scalar_moon_type(name),
     }
 }
 fn warning(item: &str, message: &str) -> Diagnostic {
@@ -686,7 +715,7 @@ unsafe extern "C" { pub fn c_move(p:*mut Point,n:usize)->i32; }
         assert!(b.moonbit_source().contains("#borrow(p)"));
         assert!(
             b.moonbit_source()
-                .contains("fn c_move(p : @c.Pointer[Point], n : UInt64) -> Int")
+                .contains("fn c_move(p : @c.Pointer[Point], n : @c.CSize) -> Int")
         );
         assert!(
             b.moonbit_source()
@@ -1024,18 +1053,27 @@ pub type uintmax_t = __uint64_t;
             default_type_rename,
             default_constant_rename,
         );
-        assert!(b.moonbit_source().contains("pub type IntLeast16T = Int"));
+        assert!(
+            b.moonbit_source()
+                .contains("pub type IntLeast16T = @c.CShort")
+        );
         assert!(b.moonbit_source().contains("pub type IntLeast8T = Byte"));
         assert!(b.moonbit_source().contains("pub type IntLeast32T = Int"));
         assert!(b.moonbit_source().contains("pub type IntLeast64T = Int64"));
         assert!(b.moonbit_source().contains("pub type UintLeast8T = Byte"));
-        assert!(b.moonbit_source().contains("pub type UintLeast16T = Int"));
+        assert!(
+            b.moonbit_source()
+                .contains("pub type UintLeast16T = @c.CUnsignedShort")
+        );
         assert!(b.moonbit_source().contains("pub type UintLeast32T = UInt"));
         assert!(
             b.moonbit_source()
-                .contains("pub type UintLeast64T = UInt64")
+                .contains("pub type UintLeast64T = @c.CUnsignedLong")
         );
-        assert!(b.moonbit_source().contains("pub type UintmaxT = UInt64"));
+        assert!(
+            b.moonbit_source()
+                .contains("pub type UintmaxT = @c.CUnsignedLong")
+        );
         assert!(!b.moonbit_source().contains("IntLeast16T = IntLeast16T"));
         assert!(!b.moonbit_source().contains("UintmaxT = UintmaxT"));
     }
@@ -1330,5 +1368,60 @@ unsafe extern "C" { pub fn LIB_getCount() -> LIB_count_t; }
             b.moonbit_source()
                 .contains("fn get_count() -> CountT = \"LIB_getCount\"")
         );
+    }
+
+    #[test]
+    fn preserves_platform_dependent_c_scalar_types() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct PlatformScalars {
+  pub signed_long: ::std::os::raw::c_long,
+  pub unsigned_long: ::std::os::raw::c_ulong,
+  pub size: size_t,
+  pub difference: ptrdiff_t,
+  pub signed_pointer: intptr_t,
+  pub unsigned_pointer: uintptr_t,
+}
+unsafe extern "C" {
+  pub fn consume_platform_scalars(value: PlatformScalars) -> PlatformScalars;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("signed_long : @c.CLong"));
+        assert!(moon.contains("unsigned_long : @c.CUnsignedLong"));
+        assert!(moon.contains("size : @c.CSize"));
+        assert!(moon.contains("difference : @c.CPtrDiff"));
+        assert!(moon.contains("signed_pointer : @c.CIntPtr"));
+        assert!(moon.contains("unsigned_pointer : @c.CUIntPtr"));
+
+        let stub = b.c_stub_source();
+        assert!(stub.contains("#include <stddef.h>"));
+        assert!(stub.contains("long signed_long;"));
+        assert!(stub.contains("unsigned long unsigned_long;"));
+        assert!(stub.contains("size_t size;"));
+        assert!(stub.contains("ptrdiff_t difference;"));
+        assert!(stub.contains("intptr_t signed_pointer;"));
+        assert!(stub.contains("uintptr_t unsigned_pointer;"));
+        assert!(!stub.contains("int64_t signed_long;"));
+        assert!(!stub.contains("uint64_t unsigned_long;"));
     }
 }
