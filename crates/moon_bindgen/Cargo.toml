@@ -1,6 +1,6 @@
 [package]
 name = "moon_bindgen"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 description = "Automatically generates MoonBit FFI bindings to Rust/C libraries."
 license = "MIT"
