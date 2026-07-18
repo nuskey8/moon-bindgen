@@ -1228,31 +1228,7 @@ fn value_name(name: &str) -> String {
 }
 
 fn safe_ident(name: &str) -> String {
-    if matches!(
-        name,
-        "type"
-            | "fn"
-            | "let"
-            | "const"
-            | "struct"
-            | "enum"
-            | "match"
-            | "if"
-            | "else"
-            | "loop"
-            | "for"
-            | "while"
-            | "return"
-            | "extern"
-            | "pub"
-            | "priv"
-            | "true"
-            | "false"
-    ) {
-        format!("{name}_")
-    } else {
-        name.to_owned()
-    }
+    crate::ident::safe_moonbit_ident(name)
 }
 
 fn warning(item: &str, message: &str) -> Diagnostic {
