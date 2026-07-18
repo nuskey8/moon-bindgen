@@ -95,6 +95,13 @@ pub(crate) fn render(
         })
         .cloned()
         .collect::<BTreeSet<_>>();
+    let constructor_structs = constructible_structs
+        .iter()
+        .chain(value_structs.iter().filter(|name| {
+            model.structs[*name].from_bindgen && native_struct_constructible(name, model)
+        }))
+        .cloned()
+        .collect::<BTreeSet<_>>();
 
     let mut wrapped_symbols = BTreeSet::new();
     let mut diagnostics = Vec::new();
@@ -161,7 +168,7 @@ pub(crate) fn render(
     }
     let mut constructors_moon = String::new();
     let mut constructors_c = String::new();
-    for name in &constructible_structs {
+    for name in &constructor_structs {
         emit_constructor(name, &ctx, &mut constructors_moon, &mut constructors_c);
     }
     let mut getters_moon = String::new();
@@ -172,7 +179,7 @@ pub(crate) fn render(
         }
     }
     moonbit_functions = format!("{constructors_moon}{getters_moon}{moonbit_functions}");
-    let c_source = if wrapped_symbols.is_empty() && constructible_structs.is_empty() {
+    let c_source = if wrapped_symbols.is_empty() && constructor_structs.is_empty() {
         String::new()
     } else {
         format!(

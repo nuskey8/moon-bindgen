@@ -1564,6 +1564,46 @@ unsafe extern "C" {
     }
 
     #[test]
+    fn constructs_bindgen_structs_that_are_passed_by_value() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct Vector2 {
+  pub x: f32,
+  pub y: f32,
+}
+unsafe extern "C" {
+  pub fn normalize(value: Vector2) -> Vector2;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+            false,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("pub fn Vector2::new(x : Float, y : Float) -> Vector2"));
+        assert!(moon.contains("pub fn Vector2::get_x(self : Vector2) -> Float"));
+        assert!(moon.contains("pub fn Vector2::set_x(self : Vector2, value : Float) -> Unit"));
+        assert!(b.c_stub_source().contains("moon_bindgen_vector2_new"));
+        assert!(b.c_stub_source().contains("moon_bindgen_vector2_x_get"));
+    }
+
+    #[test]
     fn constructs_portable_bindgen_structs_for_pointer_parameters() {
         let f = syn::parse_file(
             r#"
