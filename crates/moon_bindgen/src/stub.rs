@@ -137,6 +137,11 @@ pub(crate) fn render(
     for name in &constructible_structs {
         collect_struct_dependencies(name, model, &mut c_type_names);
     }
+    for name in &constructor_structs {
+        for field in &model.structs[name].fields {
+            collect_c_type_references(&field.ty, model, &mut c_type_names);
+        }
+    }
     for name in &c_type_names {
         let structure = &model.structs[name];
         if structure.from_bindgen {
@@ -228,7 +233,7 @@ fn emit_constructor(name: &str, ctx: &Context<'_>, moon: &mut String, c: &mut St
             "{} {param}",
             c_abi_type(&leaf.ty, ctx.model).unwrap()
         ));
-        let target = format!("value->{}", leaf.path.join("."));
+        let target = format!("value->{}", c_field_path(name, &leaf.path, ctx.model));
         if is_array {
             assignments.push_str(&format!("  memcpy({target}, {param}, sizeof({target}));\n"));
         } else {
@@ -277,7 +282,7 @@ fn emit_field_accessors(
     c: &mut String,
 ) {
     let field = value_name(&leaf.path.join("_"));
-    let field_expr = leaf.path.join(".");
+    let field_expr = c_field_path(struct_name, &leaf.path, ctx.model);
     let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
     let prefix = format!("moon_bindgen_{}_{}", struct_name.to_snake_case(), field);
     let getter = format!("{prefix}_get");
@@ -810,6 +815,104 @@ fn collect_struct_dependencies(name: &str, model: &Model, out: &mut BTreeSet<Str
             collect_struct_dependencies(nested, model, out);
         }
     }
+}
+
+fn collect_c_type_references(ty: &Type, model: &Model, out: &mut BTreeSet<String>) {
+    match resolve_alias(ty, model) {
+        Type::Path(path) if model.structs.contains_key(last(path)) => {
+            out.insert(last(path).to_owned());
+        }
+        Type::Pointer { inner, .. } | Type::Array { inner, .. } => {
+            collect_c_type_references(inner, model, out);
+        }
+        _ => {}
+    }
+}
+
+fn c_field_path(root: &str, path: &[String], model: &Model) -> String {
+    let mut structure = &model.structs[root];
+    let mut fields = Vec::with_capacity(path.len());
+    for name in path {
+        fields.push(c_field_name(name, structure.from_bindgen));
+        let Some(field) = structure.fields.iter().find(|field| field.name == *name) else {
+            break;
+        };
+        let Some(nested) = by_value_struct(&field.ty, model) else {
+            continue;
+        };
+        structure = &model.structs[nested];
+    }
+    fields.join(".")
+}
+
+fn c_field_name(name: &str, from_bindgen: bool) -> String {
+    if !from_bindgen {
+        return name.replace("r#", "");
+    }
+    let Some(base) = name.strip_suffix('_') else {
+        return name.to_owned();
+    };
+    if is_rust_keyword(base) {
+        base.to_owned()
+    } else {
+        name.to_owned()
+    }
+}
+
+fn is_rust_keyword(name: &str) -> bool {
+    matches!(
+        name,
+        "as" | "break"
+            | "const"
+            | "continue"
+            | "crate"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "fn"
+            | "for"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "pub"
+            | "ref"
+            | "return"
+            | "self"
+            | "Self"
+            | "static"
+            | "struct"
+            | "super"
+            | "trait"
+            | "true"
+            | "type"
+            | "unsafe"
+            | "use"
+            | "where"
+            | "while"
+            | "async"
+            | "await"
+            | "dyn"
+            | "abstract"
+            | "become"
+            | "box"
+            | "do"
+            | "final"
+            | "macro"
+            | "override"
+            | "priv"
+            | "typeof"
+            | "unsized"
+            | "virtual"
+            | "yield"
+            | "try"
+    )
 }
 
 fn wrapper_type_supported(ty: &Type, values: &BTreeSet<String>, model: &Model) -> bool {

@@ -1604,6 +1604,56 @@ unsafe extern "C" {
     }
 
     #[test]
+    fn restores_bindgen_c_field_names_and_declares_pointer_field_types() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct AutomationEvent {
+  pub frame: u32,
+  pub type_: u32,
+}
+#[repr(C)]
+pub struct Transform {
+  pub translation: [f32; 3usize],
+}
+#[repr(C)]
+pub struct ModelAnimation {
+  pub bone_count: i32,
+  pub frame_poses: *mut *mut Transform,
+}
+unsafe extern "C" {
+  pub fn consume_event(value: *const AutomationEvent);
+  pub fn consume_animation(value: *const ModelAnimation);
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+            false,
+        );
+
+        let stub = b.c_stub_source();
+        assert!(stub.contains("value->type = type_;"));
+        assert!(stub.contains("return value->type;"));
+        assert!(!stub.contains("value->type_"));
+        assert!(stub.contains("typedef Transform moon_bindgen_c_Transform;"));
+        assert!(stub.contains("moon_bindgen_c_Transform * * frame_poses"));
+    }
+
+    #[test]
     fn constructs_portable_bindgen_structs_for_pointer_parameters() {
         let f = syn::parse_file(
             r#"
