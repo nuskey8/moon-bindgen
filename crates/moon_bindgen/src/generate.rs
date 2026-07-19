@@ -672,32 +672,7 @@ fn warning(item: &str, message: &str) -> Diagnostic {
     }
 }
 fn safe_ident(s: &str) -> String {
-    let s = s.replace("r#", "");
-    if matches!(
-        s.as_str(),
-        "type"
-            | "fn"
-            | "let"
-            | "const"
-            | "struct"
-            | "enum"
-            | "match"
-            | "if"
-            | "else"
-            | "loop"
-            | "for"
-            | "while"
-            | "return"
-            | "extern"
-            | "pub"
-            | "priv"
-            | "true"
-            | "false"
-    ) {
-        format!("{s}_")
-    } else {
-        s
-    }
+    crate::ident::safe_moonbit_ident(s)
 }
 
 fn safe_value_ident(s: &str) -> String {
@@ -1007,6 +982,47 @@ unsafe extern "C" { pub fn library_count(context: *mut Context) -> Count; }
         assert!(b.moonbit_source().contains("fn lz4_keep"));
         assert!(!b.moonbit_source().contains("xxh_drop"));
         assert!(!b.moonbit_source().contains("XXH_drop"));
+    }
+
+    #[test]
+    fn escapes_all_moonbit_keywords_in_generated_value_names() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct ReservedFields {
+  pub readonly: i32,
+  pub opaque: i32,
+}
+unsafe extern "C" {
+  pub fn guard(module: i32, value: ReservedFields);
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+            false,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("readonly_ : Int"));
+        assert!(moon.contains("opaque_ : Int"));
+        assert!(moon.contains("pub fn guard_(module_ : Int, value : ReservedFields)"));
+        assert!(!moon.contains("pub fn guard("));
+        assert!(b.c_stub_source().contains("int32_t readonly;"));
+        assert!(b.c_stub_source().contains("int32_t opaque;"));
     }
 
     #[test]

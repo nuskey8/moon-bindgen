@@ -1,5 +1,6 @@
 //! Generate MoonBit native FFI declarations from Rust source files.
 mod generate;
+mod ident;
 mod model;
 mod parse;
 mod stub;
