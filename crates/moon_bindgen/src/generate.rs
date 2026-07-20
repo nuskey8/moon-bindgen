@@ -1394,6 +1394,114 @@ unsafe extern "C" {
     }
 
     #[test]
+    fn generates_borrowed_getters_for_pointer_returned_bindgen_structs() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct CURL {
+  pub _bindgen_opaque_blob: [u8; 1usize],
+}
+#[repr(C)]
+pub union CURLMsgData {
+  pub whatever: *mut ::std::ffi::c_void,
+  pub result: i32,
+}
+#[repr(C)]
+pub struct CURLMsg {
+  pub msg: i32,
+  pub easy_handle: *mut CURL,
+  pub data: CURLMsgData,
+}
+#[repr(C)]
+pub struct CURLVersion {
+  pub version_num: u32,
+}
+#[repr(C)]
+pub struct MutableValue {
+  pub value: i32,
+}
+unsafe extern "C" {
+  pub fn curl_multi_info_read() -> *mut CURLMsg;
+  pub fn curl_version_info() -> *const CURLVersion;
+  pub fn mutable_curl_version_info() -> *mut CURLVersion;
+  pub fn mutable_value() -> *mut MutableValue;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+            false,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(!moon.contains("type CurlMsgPointer"));
+        assert!(moon.contains("pub extern \"c\" fn curl_multi_info_read() -> @c.Pointer[CurlMsg]"));
+        assert!(moon.contains(
+            "pub extern \"c\" fn curl_version_info() -> @c.ReadOnlyPointer[CurlVersion]"
+        ));
+        assert!(
+            moon.contains(
+                "pub fn CurlMsg::get_msg_at(pointer : @c.ReadOnlyPointer[CurlMsg]) -> Int"
+            )
+        );
+        assert!(moon.contains(
+            "pub fn CurlMsg::get_easy_handle_at(pointer : @c.ReadOnlyPointer[CurlMsg]) -> @c.Pointer[Curl]"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlMsg::get_data_result_at(pointer : @c.ReadOnlyPointer[CurlMsg]) -> Int"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlMsg::set_msg_at(pointer : @c.Pointer[CurlMsg], value : Int) -> Unit"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlMsg::set_data_result_at(pointer : @c.Pointer[CurlMsg], value : Int) -> Unit"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlVersion::get_version_num_at(pointer : @c.ReadOnlyPointer[CurlVersion]) -> UInt"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlVersion::set_version_num_at(pointer : @c.Pointer[CurlVersion], value : UInt) -> Unit"
+        ));
+        assert!(moon.contains(
+            "pub fn MutableValue::get_value_at(pointer : @c.ReadOnlyPointer[MutableValue]) -> Int"
+        ));
+        assert!(moon.contains(
+            "pub fn MutableValue::set_value_at(pointer : @c.Pointer[MutableValue], value : Int) -> Unit"
+        ));
+        assert!(!moon.contains("::as_pointer"));
+        assert!(!moon.contains("::from_pointer"));
+        assert!(moon.contains("pub fn CurlVersion::get_version_num(self : CurlVersion) -> UInt"));
+        assert!(moon.contains("pub fn MutableValue::get_value(self : MutableValue) -> Int"));
+        assert!(
+            moon.contains(
+                "pub fn MutableValue::set_value(self : MutableValue, value : Int) -> Unit"
+            )
+        );
+        assert!(moon.contains("#borrow(pointer)"));
+
+        let stub = b.c_stub_source();
+        assert!(stub.contains("return (int32_t)value->msg;"));
+        assert!(stub.contains("return (void *)value->easy_handle;"));
+        assert!(stub.contains("return (int32_t)value->data.result;"));
+        assert!(stub.contains("value->msg = field;"));
+        assert!(stub.contains("value->data.result = field;"));
+        assert!(stub.contains("_version_num_pointer_get"));
+    }
+
+    #[test]
     fn c_package_pointers_retain_null_values_directly() {
         let f = syn::parse_file(
             r#"

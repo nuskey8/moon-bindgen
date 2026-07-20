@@ -926,3 +926,204 @@ extern "c" fn moon_bindgen_lz4_stream_t_internal_dict_size_set(object : Lz4Strea
 pub fn Lz4StreamTInternal::set_dict_size(self : Lz4StreamTInternal, value : UInt) -> Unit {
   moon_bindgen_lz4_stream_t_internal_dict_size_set(self, value)
 }
+
+#borrow(pointer, out)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU], out : FixedArray[@c.CChar]) = "moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_get"
+
+///|
+pub fn Lz4StreamDecodeU::get_min_state_size_at(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> FixedArray[@c.CChar] {
+  let out = FixedArray::make(32, @c.CChar::default())
+  moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_get(pointer, out)
+  out
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_set(pointer : @c.Pointer[Lz4StreamDecodeU], value : FixedArray[@c.CChar]) = "moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_set"
+
+///|
+pub fn Lz4StreamDecodeU::set_min_state_size_at(pointer : @c.Pointer[Lz4StreamDecodeU], value : FixedArray[@c.CChar]) -> Unit {
+  if value.length() != 32 { abort("value must contain exactly 32 elements") }
+  moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_get"
+
+///|
+pub fn Lz4StreamDecodeU::get_internal_donotuse_external_dict_at(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_get(pointer)
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_set(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_set"
+
+///|
+pub fn Lz4StreamDecodeU::set_internal_donotuse_external_dict_at(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_get"
+
+///|
+pub fn Lz4StreamDecodeU::get_internal_donotuse_prefix_end_at(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_get(pointer)
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_set(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_set"
+
+///|
+pub fn Lz4StreamDecodeU::set_internal_donotuse_prefix_end_at(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.CSize = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_get"
+
+///|
+pub fn Lz4StreamDecodeU::get_internal_donotuse_ext_dict_size_at(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.CSize {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_get(pointer)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_set(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.CSize) = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_set"
+
+///|
+pub fn Lz4StreamDecodeU::set_internal_donotuse_ext_dict_size_at(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.CSize) -> Unit {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.CSize = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_get"
+
+///|
+pub fn Lz4StreamDecodeU::get_internal_donotuse_prefix_size_at(pointer : @c.ReadOnlyPointer[Lz4StreamDecodeU]) -> @c.CSize {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_get(pointer)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_set(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.CSize) = "moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_set"
+
+///|
+pub fn Lz4StreamDecodeU::set_internal_donotuse_prefix_size_at(pointer : @c.Pointer[Lz4StreamDecodeU], value : @c.CSize) -> Unit {
+  moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_set(pointer, value)
+}
+
+#borrow(pointer, out)
+extern "c" fn moon_bindgen_lz4_stream_u_min_state_size_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU], out : FixedArray[@c.CChar]) = "moon_bindgen_lz4_stream_u_min_state_size_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_min_state_size_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> FixedArray[@c.CChar] {
+  let out = FixedArray::make(16416, @c.CChar::default())
+  moon_bindgen_lz4_stream_u_min_state_size_pointer_get(pointer, out)
+  out
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_u_min_state_size_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : FixedArray[@c.CChar]) = "moon_bindgen_lz4_stream_u_min_state_size_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_min_state_size_at(pointer : @c.Pointer[Lz4StreamU], value : FixedArray[@c.CChar]) -> Unit {
+  if value.length() != 16416 { abort("value must contain exactly 16416 elements") }
+  moon_bindgen_lz4_stream_u_min_state_size_pointer_set(pointer, value)
+}
+
+#borrow(pointer, out)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU], out : FixedArray[UInt]) = "moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_hash_table_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> FixedArray[UInt] {
+  let out = FixedArray::make(4096, UInt::default())
+  moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_get(pointer, out)
+  out
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : FixedArray[UInt]) = "moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_hash_table_at(pointer : @c.Pointer[Lz4StreamU], value : FixedArray[UInt]) -> Unit {
+  if value.length() != 4096 { abort("value must contain exactly 4096 elements") }
+  moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] = "moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_dictionary_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> @c.ReadOnlyPointer[@c.CUnsignedChar] {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_get(pointer)
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) = "moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_dictionary_at(pointer : @c.Pointer[Lz4StreamU], value : @c.ReadOnlyPointer[@c.CUnsignedChar]) -> Unit {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> @c.ReadOnlyPointer[Lz4StreamTInternal] = "moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_dict_ctx_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> @c.ReadOnlyPointer[Lz4StreamTInternal] {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_get(pointer)
+}
+
+#borrow(pointer, value)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : @c.ReadOnlyPointer[Lz4StreamTInternal]) = "moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_dict_ctx_at(pointer : @c.Pointer[Lz4StreamU], value : @c.ReadOnlyPointer[Lz4StreamTInternal]) -> Unit {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt = "moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_current_offset_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt {
+  moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_get(pointer)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : UInt) = "moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_current_offset_at(pointer : @c.Pointer[Lz4StreamU], value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt = "moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_table_type_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt {
+  moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_get(pointer)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : UInt) = "moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_table_type_at(pointer : @c.Pointer[Lz4StreamU], value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_set(pointer, value)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_get(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt = "moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_get"
+
+///|
+pub fn Lz4StreamU::get_internal_donotuse_dict_size_at(pointer : @c.ReadOnlyPointer[Lz4StreamU]) -> UInt {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_get(pointer)
+}
+
+#borrow(pointer)
+extern "c" fn moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_set(pointer : @c.Pointer[Lz4StreamU], value : UInt) = "moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_set"
+
+///|
+pub fn Lz4StreamU::set_internal_donotuse_dict_size_at(pointer : @c.Pointer[Lz4StreamU], value : UInt) -> Unit {
+  moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_set(pointer, value)
+}

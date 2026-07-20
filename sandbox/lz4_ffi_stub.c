@@ -7,7 +7,9 @@
 #include <string.h>
 
 typedef LZ4_streamDecode_t_internal moon_bindgen_c_LZ4_streamDecode_t_internal;
+typedef union LZ4_streamDecode_u moon_bindgen_c_LZ4_streamDecode_u;
 typedef LZ4_stream_t_internal moon_bindgen_c_LZ4_stream_t_internal;
+typedef union LZ4_stream_u moon_bindgen_c_LZ4_stream_u;
 
 MOONBIT_FFI_EXPORT
 void *moon_bindgen_lz4_stream_decode_t_internal_new(const unsigned char * external_dict, const unsigned char * prefix_end, size_t ext_dict_size, size_t prefix_size) {
@@ -149,5 +151,149 @@ MOONBIT_FFI_EXPORT
 void moon_bindgen_lz4_stream_t_internal_dict_size_set(void *self, uint32_t field) {
   moon_bindgen_c_LZ4_stream_t_internal *value = (moon_bindgen_c_LZ4_stream_t_internal *)self;
   value->dictSize = field;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_get(const void *pointer, void *out) {
+  const moon_bindgen_c_LZ4_streamDecode_u *value = (const moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  memcpy(out, value->minStateSize, sizeof(value->minStateSize));
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_min_state_size_pointer_set(void *pointer, const void *field) {
+  moon_bindgen_c_LZ4_streamDecode_u *value = (moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  memcpy(value->minStateSize, field, sizeof(value->minStateSize));
+}
+
+MOONBIT_FFI_EXPORT
+const unsigned char * moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_streamDecode_u *value = (const moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  return (const unsigned char *)value->internal_donotuse.externalDict;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_internal_donotuse_external_dict_pointer_set(void *pointer, const unsigned char * field) {
+  moon_bindgen_c_LZ4_streamDecode_u *value = (moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  value->internal_donotuse.externalDict = field;
+}
+
+MOONBIT_FFI_EXPORT
+const unsigned char * moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_streamDecode_u *value = (const moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  return (const unsigned char *)value->internal_donotuse.prefixEnd;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_end_pointer_set(void *pointer, const unsigned char * field) {
+  moon_bindgen_c_LZ4_streamDecode_u *value = (moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  value->internal_donotuse.prefixEnd = field;
+}
+
+MOONBIT_FFI_EXPORT
+size_t moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_streamDecode_u *value = (const moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  return (size_t)value->internal_donotuse.extDictSize;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_internal_donotuse_ext_dict_size_pointer_set(void *pointer, size_t field) {
+  moon_bindgen_c_LZ4_streamDecode_u *value = (moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  value->internal_donotuse.extDictSize = field;
+}
+
+MOONBIT_FFI_EXPORT
+size_t moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_streamDecode_u *value = (const moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  return (size_t)value->internal_donotuse.prefixSize;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_decode_u_internal_donotuse_prefix_size_pointer_set(void *pointer, size_t field) {
+  moon_bindgen_c_LZ4_streamDecode_u *value = (moon_bindgen_c_LZ4_streamDecode_u *)pointer;
+  value->internal_donotuse.prefixSize = field;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_min_state_size_pointer_get(const void *pointer, void *out) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  memcpy(out, value->minStateSize, sizeof(value->minStateSize));
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_min_state_size_pointer_set(void *pointer, const void *field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  memcpy(value->minStateSize, field, sizeof(value->minStateSize));
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_get(const void *pointer, void *out) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  memcpy(out, value->internal_donotuse.hashTable, sizeof(value->internal_donotuse.hashTable));
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_hash_table_pointer_set(void *pointer, const void *field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  memcpy(value->internal_donotuse.hashTable, field, sizeof(value->internal_donotuse.hashTable));
+}
+
+MOONBIT_FFI_EXPORT
+const unsigned char * moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  return (const unsigned char *)value->internal_donotuse.dictionary;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_dictionary_pointer_set(void *pointer, const unsigned char * field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  value->internal_donotuse.dictionary = field;
+}
+
+MOONBIT_FFI_EXPORT
+void * moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  return (void *)value->internal_donotuse.dictCtx;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_dict_ctx_pointer_set(void *pointer, void * field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  value->internal_donotuse.dictCtx = field;
+}
+
+MOONBIT_FFI_EXPORT
+uint32_t moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  return (uint32_t)value->internal_donotuse.currentOffset;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_current_offset_pointer_set(void *pointer, uint32_t field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  value->internal_donotuse.currentOffset = field;
+}
+
+MOONBIT_FFI_EXPORT
+uint32_t moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  return (uint32_t)value->internal_donotuse.tableType;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_table_type_pointer_set(void *pointer, uint32_t field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  value->internal_donotuse.tableType = field;
+}
+
+MOONBIT_FFI_EXPORT
+uint32_t moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_get(const void *pointer) {
+  const moon_bindgen_c_LZ4_stream_u *value = (const moon_bindgen_c_LZ4_stream_u *)pointer;
+  return (uint32_t)value->internal_donotuse.dictSize;
+}
+
+MOONBIT_FFI_EXPORT
+void moon_bindgen_lz4_stream_u_internal_donotuse_dict_size_pointer_set(void *pointer, uint32_t field) {
+  moon_bindgen_c_LZ4_stream_u *value = (moon_bindgen_c_LZ4_stream_u *)pointer;
+  value->internal_donotuse.dictSize = field;
 }
 
