@@ -382,8 +382,19 @@ typedef struct {
   SockAddr *to;
   unsigned int to_len;
 } RecvInfo;
+typedef struct CURL CURL;
+typedef union {
+  void *whatever;
+  int result;
+} CURLMsgData;
+typedef struct {
+  int msg;
+  CURL *easy_handle;
+  CURLMsgData data;
+} CURLMsg;
 PlatformInfo round_trip_platform_info(PlatformInfo value);
 int receive_packet(const RecvInfo *info);
+CURLMsg *curl_multi_info_read(void);
 "#,
         )
         .unwrap();
@@ -405,9 +416,25 @@ pub struct RecvInfo {
   pub to: *mut SockAddr,
   pub to_len: u32,
 }
+#[repr(C)]
+pub struct CURL {
+  pub _bindgen_opaque_blob: [u8; 1],
+}
+#[repr(C)]
+pub union CURLMsgData {
+  pub whatever: *mut core::ffi::c_void,
+  pub result: i32,
+}
+#[repr(C)]
+pub struct CURLMsg {
+  pub msg: i32,
+  pub easy_handle: *mut CURL,
+  pub data: CURLMsgData,
+}
 unsafe extern "C" {
   pub fn round_trip_platform_info(value: PlatformInfo) -> PlatformInfo;
   pub fn receive_packet(info: *const RecvInfo) -> i32;
+  pub fn curl_multi_info_read() -> *mut CURLMsg;
 }
 "#,
         )

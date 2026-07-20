@@ -102,6 +102,31 @@ pub(crate) fn render(
         }))
         .cloned()
         .collect::<BTreeSet<_>>();
+    let pointer_result_structs = model
+        .functions
+        .values()
+        .filter(|function| function_filter(function.rust_name.clone()))
+        .filter_map(|function| {
+            pointer_to_bindgen_struct(&function.result, model).map(|name| {
+                let mutable = matches!(
+                    resolve_alias(&function.result, model),
+                    Type::Pointer { mutable: true, .. }
+                );
+                (name.to_owned(), mutable)
+            })
+        })
+        .filter(|(name, _)| {
+            model.structs[name].from_bindgen
+                && type_filter(name.clone())
+                && native_struct_readable(name, model, &mut vec![])
+        })
+        .fold(BTreeMap::new(), |mut pointers, (name, mutable)| {
+            pointers
+                .entry(name)
+                .and_modify(|has_mutable| *has_mutable |= mutable)
+                .or_insert(mutable);
+            pointers
+        });
 
     let mut wrapped_symbols = BTreeSet::new();
     let mut diagnostics = Vec::new();
@@ -142,12 +167,17 @@ pub(crate) fn render(
             collect_c_type_references(&field.ty, model, &mut c_type_names);
         }
     }
+    for name in pointer_result_structs.keys() {
+        c_type_names.insert(name.clone());
+    }
     for name in &c_type_names {
         let structure = &model.structs[name];
         if structure.from_bindgen {
             c_types.push_str(&format!(
-                "typedef {} moon_bindgen_c_{};\n",
-                structure.name, structure.name
+                "typedef {}{} moon_bindgen_c_{};\n",
+                if structure.is_union { "union " } else { "" },
+                structure.name,
+                structure.name
             ));
         } else {
             c_types.push_str(&format!(
@@ -176,6 +206,15 @@ pub(crate) fn render(
     for name in &constructor_structs {
         emit_constructor(name, &ctx, &mut constructors_moon, &mut constructors_c);
     }
+    for (name, mutable) in &pointer_result_structs {
+        emit_borrowed_pointer_getters(
+            name,
+            *mutable,
+            &ctx,
+            &mut constructors_moon,
+            &mut constructors_c,
+        );
+    }
     let mut getters_moon = String::new();
     let mut getters_c = String::new();
     for name in result_structs {
@@ -184,7 +223,10 @@ pub(crate) fn render(
         }
     }
     moonbit_functions = format!("{constructors_moon}{getters_moon}{moonbit_functions}");
-    let c_source = if wrapped_symbols.is_empty() && constructor_structs.is_empty() {
+    let c_source = if wrapped_symbols.is_empty()
+        && constructor_structs.is_empty()
+        && pointer_result_structs.is_empty()
+    {
         String::new()
     } else {
         format!(
@@ -198,6 +240,102 @@ pub(crate) fn render(
         wrapped_symbols,
         value_structs,
         diagnostics,
+    }
+}
+
+fn emit_borrowed_pointer_getters(
+    name: &str,
+    mutable: bool,
+    ctx: &Context<'_>,
+    moon: &mut String,
+    c: &mut String,
+) {
+    let struct_ty = type_name(name, ctx.type_rename);
+    let readonly_pointer_ty = format!("@c.ReadOnlyPointer[{struct_ty}]");
+    let mutable_pointer_ty = format!("@c.Pointer[{struct_ty}]");
+    for leaf in struct_leaves(name, ctx.model) {
+        let field = value_name(&leaf.path.join("_"));
+        let getter_name = format!("get_{field}_at");
+        let setter_name = format!("set_{field}_at");
+        let field_expr = c_field_path(name, &leaf.path, ctx.model);
+        let moon_ty = moon_type(&leaf.ty, ctx.model, ctx.type_rename).unwrap();
+        let symbol = format!(
+            "moon_bindgen_{}_{}_pointer_get",
+            name.to_snake_case(),
+            field
+        );
+        if let Type::Array {
+            inner,
+            len: Some(len),
+        } = resolve_alias(&leaf.ty, ctx.model)
+        {
+            let initial = default_value(inner, ctx.model).unwrap();
+            moon.push_str(&format!(
+                "#borrow(pointer, out)\nextern \"c\" fn {symbol}(pointer : {readonly_pointer_ty}, out : {moon_ty}) = \"{symbol}\"\n\n"
+            ));
+            emit_doc(moon, &leaf.docs);
+            moon.push_str(&format!(
+                "{}fn {struct_ty}::{getter_name}(pointer : {readonly_pointer_ty}) -> {moon_ty} {{\n  let out = FixedArray::make({len}, {initial})\n  {symbol}(pointer, out)\n  out\n}}\n\n",
+                ctx.visibility.prefix()
+            ));
+            c.push_str(&format!(
+                "MOONBIT_FFI_EXPORT\nvoid {symbol}(const void *pointer, void *out) {{\n  const moon_bindgen_c_{name} *value = (const moon_bindgen_c_{name} *)pointer;\n  memcpy(out, value->{field_expr}, sizeof(value->{field_expr}));\n}}\n\n"
+            ));
+            if mutable {
+                let setter = format!(
+                    "moon_bindgen_{}_{}_pointer_set",
+                    name.to_snake_case(),
+                    field
+                );
+                moon.push_str(&format!(
+                    "#borrow(pointer, value)\nextern \"c\" fn {setter}(pointer : {mutable_pointer_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
+                ));
+                emit_doc(moon, &leaf.docs);
+                moon.push_str(&format!(
+                    "{}fn {struct_ty}::{setter_name}(pointer : {mutable_pointer_ty}, value : {moon_ty}) -> Unit {{\n  if value.length() != {len} {{ abort(\"value must contain exactly {len} elements\") }}\n  {setter}(pointer, value)\n}}\n\n",
+                    ctx.visibility.prefix()
+                ));
+                c.push_str(&format!(
+                    "MOONBIT_FFI_EXPORT\nvoid {setter}(void *pointer, const void *field) {{\n  moon_bindgen_c_{name} *value = (moon_bindgen_c_{name} *)pointer;\n  memcpy(value->{field_expr}, field, sizeof(value->{field_expr}));\n}}\n\n"
+                ));
+            }
+        } else {
+            moon.push_str(&format!(
+                "#borrow(pointer)\nextern \"c\" fn {symbol}(pointer : {readonly_pointer_ty}) -> {moon_ty} = \"{symbol}\"\n\n"
+            ));
+            emit_doc(moon, &leaf.docs);
+            moon.push_str(&format!(
+                "{}fn {struct_ty}::{getter_name}(pointer : {readonly_pointer_ty}) -> {moon_ty} {{\n  {symbol}(pointer)\n}}\n\n",
+                ctx.visibility.prefix()
+            ));
+            let c_ty = c_abi_type(&leaf.ty, ctx.model).unwrap();
+            c.push_str(&format!(
+                "MOONBIT_FFI_EXPORT\n{c_ty} {symbol}(const void *pointer) {{\n  const moon_bindgen_c_{name} *value = (const moon_bindgen_c_{name} *)pointer;\n  return ({c_ty})value->{field_expr};\n}}\n\n"
+            ));
+            if mutable {
+                let setter = format!(
+                    "moon_bindgen_{}_{}_pointer_set",
+                    name.to_snake_case(),
+                    field
+                );
+                let borrow = if needs_ownership(&leaf.ty) {
+                    "#borrow(pointer, value)"
+                } else {
+                    "#borrow(pointer)"
+                };
+                moon.push_str(&format!(
+                    "{borrow}\nextern \"c\" fn {setter}(pointer : {mutable_pointer_ty}, value : {moon_ty}) = \"{setter}\"\n\n"
+                ));
+                emit_doc(moon, &leaf.docs);
+                moon.push_str(&format!(
+                    "{}fn {struct_ty}::{setter_name}(pointer : {mutable_pointer_ty}, value : {moon_ty}) -> Unit {{\n  {setter}(pointer, value)\n}}\n\n",
+                    ctx.visibility.prefix()
+                ));
+                c.push_str(&format!(
+                    "MOONBIT_FFI_EXPORT\nvoid {setter}(void *pointer, {c_ty} field) {{\n  moon_bindgen_c_{name} *value = (moon_bindgen_c_{name} *)pointer;\n  value->{field_expr} = field;\n}}\n\n"
+                ));
+            }
+        }
     }
 }
 
@@ -981,6 +1119,32 @@ fn native_struct_constructible(name: &str, model: &Model) -> bool {
         })
 }
 
+fn native_struct_readable(name: &str, model: &Model, stack: &mut Vec<String>) -> bool {
+    let structure = &model.structs[name];
+    if structure.is_opaque || structure.fields.is_empty() || stack.iter().any(|item| item == name) {
+        return false;
+    }
+    stack.push(name.to_owned());
+    let readable = structure.fields.iter().all(|field| match resolve_alias(&field.ty, model) {
+        Type::Path(path) if primitive_c_type(last(path)).is_some() => true,
+        Type::Path(path) if model.structs.contains_key(last(path)) => {
+            native_struct_readable(last(path), model, stack)
+        }
+        Type::Pointer { inner, .. } => pointer_pointee_supported(inner, model),
+        Type::Array {
+            inner,
+            len: Some(len),
+        } => {
+            *len > 0
+                && matches!(resolve_alias(inner, model), Type::Path(path) if primitive_c_type(last(path)).is_some())
+        }
+        Type::FunctionPointer { variadic, .. } => !variadic,
+        _ => false,
+    });
+    stack.pop();
+    readable
+}
+
 fn struct_leaves(name: &str, model: &Model) -> Vec<Leaf> {
     fn visit(name: &str, model: &Model, prefix: &mut Vec<String>, out: &mut Vec<Leaf>) {
         for field in &model.structs[name].fields {
@@ -1010,6 +1174,11 @@ fn by_value_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
 }
 
 fn pointer_to_native_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
+    let name = pointer_to_bindgen_struct(ty, model)?;
+    native_struct_constructible(name, model).then_some(name)
+}
+
+fn pointer_to_bindgen_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
     let Type::Pointer { inner, .. } = resolve_alias(ty, model) else {
         return None;
     };
@@ -1020,7 +1189,7 @@ fn pointer_to_native_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a st
     model
         .structs
         .get(name)
-        .is_some_and(|structure| structure.from_bindgen && native_struct_constructible(name, model))
+        .is_some_and(|structure| structure.from_bindgen)
         .then_some(name)
 }
 
