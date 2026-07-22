@@ -1778,7 +1778,7 @@ unsafe extern "C" {
     }
 
     #[test]
-    fn constructs_portable_bindgen_structs_for_pointer_parameters() {
+    fn preserves_bindgen_struct_pointer_parameters() {
         let f = syn::parse_file(
             r#"
 #[repr(C)]
@@ -1817,14 +1817,62 @@ unsafe extern "C" {
 
         let moon = b.moonbit_source();
         assert!(moon.contains("pub fn RecvInfo::new("));
-        assert!(moon.contains("pub fn receive_packet(info : RecvInfo) -> Int"));
+        assert!(moon.contains(
+            "pub extern \"c\" fn receive_packet(info : @c.ReadOnlyPointer[RecvInfo]) -> Int = \"receive_packet\""
+        ));
         assert!(!moon.contains("pub fn SockAddr::new("));
 
         let stub = b.c_stub_source();
         assert!(stub.contains("typedef RecvInfo moon_bindgen_c_RecvInfo;"));
         assert!(stub.contains("value->from = from;"));
-        assert!(stub.contains("(const moon_bindgen_c_RecvInfo *)info"));
+        assert!(!stub.contains("moon_bindgen_receive_packet"));
         assert!(!stub.contains("struct moon_bindgen_c_RecvInfo {"));
+    }
+
+    #[test]
+    fn preserves_mutable_bindgen_struct_array_pointer_parameters() {
+        let f = syn::parse_file(
+            r#"
+#[repr(C)]
+pub struct curl_waitfd {
+  pub fd: i32,
+  pub events: i16,
+  pub revents: i16,
+}
+unsafe extern "C" {
+  pub fn curl_multi_poll(
+    multi: *mut core::ffi::c_void,
+    extra_fds: *mut curl_waitfd,
+    extra_nfds: u32,
+    timeout_ms: i32,
+    numfds: *mut i32,
+  ) -> u32;
+}
+"#,
+        )
+        .unwrap();
+        let mut m = Model::default();
+        parse::collect_bindgen_file(&f, &mut m);
+        let b = render(
+            &m,
+            "",
+            "",
+            Visibility::Public,
+            |_| true,
+            |_| true,
+            |_| true,
+            &|_, _| Ownership::Borrow,
+            default_function_rename,
+            default_type_rename,
+            default_constant_rename,
+            false,
+        );
+
+        let moon = b.moonbit_source();
+        assert!(moon.contains("pub fn CurlWaitfd::new("));
+        assert!(moon.contains("extra_fds : @c.Pointer[CurlWaitfd], extra_nfds : UInt"));
+        assert!(!moon.contains("extra_fds : CurlWaitfd"));
+        assert!(!b.c_stub_source().contains("moon_bindgen_curl_multi_poll"));
     }
 
     #[test]
@@ -1891,7 +1939,7 @@ unsafe extern "C" {
             moon.contains("/// Returns the library version.\npub extern \"c\" fn library_version")
         );
         assert!(moon.contains(
-            "/// Processes one received packet.\n///\n/// Returns zero on success.\npub fn receive_packet"
+            "/// Processes one received packet.\n///\n/// Returns zero on success.\n#borrow(info)\npub extern \"c\" fn receive_packet"
         ));
     }
 }
