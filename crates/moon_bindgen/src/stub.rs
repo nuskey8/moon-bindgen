@@ -137,9 +137,15 @@ pub(crate) fn render(
         if !function_filter(function.rust_name.clone()) || function.variadic {
             continue;
         }
-        let needs_stub = function.params.iter().any(|(_, ty)| {
-            by_value_struct(ty, model).is_some() || pointer_to_native_struct(ty, model).is_some()
-        }) || by_value_struct(&function.result, model).is_some();
+        // A pointer to a bindgen struct must remain a pointer in the public
+        // signature. It may designate either one object or the first element
+        // of a contiguous C array; wrapping it as a GC-managed struct object
+        // loses that distinction and makes the array case impossible.
+        let needs_stub = function
+            .params
+            .iter()
+            .any(|(_, ty)| by_value_struct(ty, model).is_some())
+            || by_value_struct(&function.result, model).is_some();
         if !needs_stub {
             continue;
         }
@@ -561,37 +567,10 @@ fn emit_wrapper(moon: &mut String, c: &mut String, function: &Function, ctx: &Co
 
     for (param_name, ty) in &function.params {
         let safe_param = value_name(param_name);
-        let native_pointer = pointer_to_native_struct(ty, ctx.model);
         wrapper_params.push(format!(
             "{safe_param} : {}",
-            native_pointer.map_or_else(
-                || moon_parameter_type(ty, ctx).unwrap(),
-                |name| type_name(name, ctx.type_rename),
-            )
+            moon_parameter_type(ty, ctx).unwrap()
         ));
-        if let Some(struct_name) = native_pointer {
-            let moon_ty = type_name(struct_name, ctx.type_rename);
-            shim_params.push((
-                safe_param.clone(),
-                moon_ty,
-                false,
-                Some((ctx.ownership_resolver)(&function.rust_name, param_name)),
-            ));
-            call_args.push(safe_param.clone());
-            c_params.push(format!("void *{safe_param}"));
-            c_call_args.push(format!(
-                "({}moon_bindgen_c_{struct_name} *){safe_param}",
-                if matches!(
-                    resolve_alias(ty, ctx.model),
-                    Type::Pointer { mutable: false, .. }
-                ) {
-                    "const "
-                } else {
-                    ""
-                }
-            ));
-            continue;
-        }
         if let Some(struct_name) = by_value_struct(ty, ctx.model) {
             if ctx.model.structs[struct_name].from_bindgen {
                 let moon_ty = type_name(struct_name, ctx.type_rename);
@@ -1171,11 +1150,6 @@ fn by_value_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
         Type::Path(path) if model.structs.contains_key(last(path)) => Some(last(path)),
         _ => None,
     }
-}
-
-fn pointer_to_native_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
-    let name = pointer_to_bindgen_struct(ty, model)?;
-    native_struct_constructible(name, model).then_some(name)
 }
 
 fn pointer_to_bindgen_struct<'a>(ty: &'a Type, model: &'a Model) -> Option<&'a str> {
