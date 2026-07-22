@@ -102,16 +102,31 @@ pub(crate) fn render(
         }))
         .cloned()
         .collect::<BTreeSet<_>>();
-    let pointer_result_structs = model
+    // Every constructible native-layout struct gets the same complete API:
+    // object accessors, pointer accessors, and an owned contiguous array.
+    // Pointer-returned opaque/readable structs are added as getter-only types.
+    let mut pointer_structs = constructor_structs
+        .iter()
+        .map(|name| (name.clone(), true))
+        .collect::<BTreeMap<_, _>>();
+    for (name, mutable) in model
         .functions
         .values()
         .filter(|function| function_filter(function.rust_name.clone()))
-        .filter_map(|function| {
-            pointer_to_bindgen_struct(&function.result, model).map(|name| {
-                let mutable = matches!(
-                    resolve_alias(&function.result, model),
-                    Type::Pointer { mutable: true, .. }
-                );
+        .flat_map(|function| {
+            function
+                .params
+                .iter()
+                .map(|(_, ty)| (ty, true))
+                .chain(std::iter::once((&function.result, false)))
+        })
+        .filter_map(|(ty, parameter)| {
+            pointer_to_bindgen_struct(ty, model).map(|name| {
+                let mutable = parameter
+                    || matches!(
+                        resolve_alias(ty, model),
+                        Type::Pointer { mutable: true, .. }
+                    );
                 (name.to_owned(), mutable)
             })
         })
@@ -120,13 +135,12 @@ pub(crate) fn render(
                 && type_filter(name.clone())
                 && native_struct_readable(name, model, &mut vec![])
         })
-        .fold(BTreeMap::new(), |mut pointers, (name, mutable)| {
-            pointers
-                .entry(name)
-                .and_modify(|has_mutable| *has_mutable |= mutable)
-                .or_insert(mutable);
-            pointers
-        });
+    {
+        pointer_structs
+            .entry(name)
+            .and_modify(|has_mutable| *has_mutable |= mutable)
+            .or_insert(mutable);
+    }
 
     let mut wrapped_symbols = BTreeSet::new();
     let mut diagnostics = Vec::new();
@@ -173,7 +187,7 @@ pub(crate) fn render(
             collect_c_type_references(&field.ty, model, &mut c_type_names);
         }
     }
-    for name in pointer_result_structs.keys() {
+    for name in pointer_structs.keys() {
         c_type_names.insert(name.clone());
     }
     for name in &c_type_names {
@@ -212,7 +226,7 @@ pub(crate) fn render(
     for name in &constructor_structs {
         emit_constructor(name, &ctx, &mut constructors_moon, &mut constructors_c);
     }
-    for (name, mutable) in &pointer_result_structs {
+    for (name, mutable) in &pointer_structs {
         emit_borrowed_pointer_getters(
             name,
             *mutable,
@@ -231,7 +245,7 @@ pub(crate) fn render(
     moonbit_functions = format!("{constructors_moon}{getters_moon}{moonbit_functions}");
     let c_source = if wrapped_symbols.is_empty()
         && constructor_structs.is_empty()
-        && pointer_result_structs.is_empty()
+        && pointer_structs.is_empty()
     {
         String::new()
     } else {
