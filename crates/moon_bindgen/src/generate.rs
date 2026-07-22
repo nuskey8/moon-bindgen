@@ -1481,7 +1481,8 @@ unsafe extern "C" {
         assert!(moon.contains(
             "pub fn MutableValue::set_value_at(pointer : @c.Pointer[MutableValue], value : Int) -> Unit"
         ));
-        assert!(!moon.contains("::as_pointer"));
+        assert!(!moon.contains("CurlVersionArray"));
+        assert!(!moon.contains("MutableValueArray"));
         assert!(!moon.contains("::from_pointer"));
         assert!(moon.contains("pub fn CurlVersion::get_version_num(self : CurlVersion) -> UInt"));
         assert!(moon.contains("pub fn MutableValue::get_value(self : MutableValue) -> Int"));
@@ -1839,6 +1840,10 @@ pub struct curl_waitfd {
   pub events: i16,
   pub revents: i16,
 }
+#[repr(C)]
+pub struct unused_config {
+  pub enabled: i32,
+}
 unsafe extern "C" {
   pub fn curl_multi_poll(
     multi: *mut core::ffi::c_void,
@@ -1872,7 +1877,21 @@ unsafe extern "C" {
         assert!(moon.contains("pub fn CurlWaitfd::new("));
         assert!(moon.contains("extra_fds : @c.Pointer[CurlWaitfd], extra_nfds : UInt"));
         assert!(!moon.contains("extra_fds : CurlWaitfd"));
-        assert!(!b.c_stub_source().contains("moon_bindgen_curl_multi_poll"));
+        assert!(moon.contains(
+            "pub fn CurlWaitfd::get_fd_at(pointer : @c.ReadOnlyPointer[CurlWaitfd]) -> Int"
+        ));
+        assert!(moon.contains(
+            "pub fn CurlWaitfd::set_fd_at(pointer : @c.Pointer[CurlWaitfd], value : Int) -> Unit"
+        ));
+        assert!(moon.contains(
+            "pub fn UnusedConfig::get_enabled_at(pointer : @c.ReadOnlyPointer[UnusedConfig]) -> Int"
+        ));
+        assert!(!moon.contains("CurlWaitfdArray"));
+        assert!(!moon.contains("UnusedConfigArray"));
+
+        let stub = b.c_stub_source();
+        assert!(!stub.contains("moon_bindgen_curl_multi_poll"));
+        assert!(!stub.contains("array_new"));
     }
 
     #[test]

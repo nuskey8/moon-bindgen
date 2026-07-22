@@ -125,7 +125,7 @@ moon_bindgen::Builder::default()
 
 MoonBitの通常のstructとC ABIのstructは同じレイアウトではありません。`#[repr(C)] struct`を値で受け取る、または返す関数に対しては、ABI変換用のC stubを生成します。
 
-また、すべてのフィールドをマーシャリング可能な`#[repr(C)] struct`に対しては、`Type::new(...)`コンストラクタと`get_<field>()` / `set_<field>()`メソッドも生成します。
+また、すべてのフィールドをマーシャリング可能な`#[repr(C)] struct`に対しては、`Type::new(...)`コンストラクタと`get_<field>()` / `set_<field>()` / `get_<field>_at` /`set_<field>_at`アクセサが生成されます。
 
 ```rust
 let bindings = moon_bindgen::Builder::default()
